@@ -49,6 +49,10 @@ namespace ov_msckf {
  * The user should specify the sensor rates that they desire along with the seeds of the random number generators.
  *
  */
+/*****************************************************************
+ * @brief 这里仿真器主要作用是给定轨迹，生成对应的观测特征+某一时刻的IMU测量.
+ * 主要生成了3D空间中的3D点特征，以及这些点特征在图像上的投影观测.
+******************************************************************/
 class Simulator {
 
 public:
@@ -56,6 +60,10 @@ public:
    * @brief Default constructor, will load all configuration variables
    * @param params_ VioManager parameters. Should have already been loaded from cmd.
    */
+  /**
+   * @brief 默认构造函数，加载所有的配置文件.
+   * @param params_ VIO管理参数，可以通过终端加载得到.
+  */
   Simulator(VioManagerOptions &params_);
 
   /**
@@ -66,7 +74,7 @@ public:
   static void perturb_parameters(std::mt19937 gen_state, VioManagerOptions &params_);
 
   /**
-   * @brief Returns if we are actively simulating
+   * @brief Returns if we are actively simulating -> 判断我们当前是否在仿真数据.
    * @return True if we still have simulation data
    */
   bool ok() { return is_running; }
@@ -83,6 +91,12 @@ public:
    * @param imustate State in the MSCKF ordering: [time(sec),q_GtoI,p_IinG,v_IinG,b_gyro,b_accel]
    * @return True if we have a state
    */
+  /*********************************
+   * @brief 生成某一时刻下的仿真IMU状态.
+   * @param 需要的时间戳.
+   * @param 生成的IMU状态序列是：[time(sec), 旋转，位置，速度，陀螺仪，加速度计]
+   * @return 生成成功则返回true.
+  **********************************/
   bool get_state(double desired_time, Eigen::Matrix<double, 17, 1> &imustate);
 
   /**
@@ -92,18 +106,25 @@ public:
    * @param am Linear velocity in the inertial frame
    * @return True if we have a measurement
    */
+  /**
+   * @brief 生成下一时刻的IMU读数.
+  */
   bool get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::Vector3d &am);
 
   /**
-   * @brief Gets the next inertial reading if we have one.
+   * @brief Gets the next camera reading if we have one.
    * @param time_cam Time that this measurement occured at
    * @param camids Camera ids that the corresponding vectors match
    * @param feats Noisy uv measurements and ids for the returned time
    * @return True if we have a measurement
    */
+  /**
+   * @brief 生成下一时刻的相机读数.
+  */
   bool get_next_cam(double &time_cam, std::vector<int> &camids, std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> &feats);
 
   /// Returns the true 3d map of features
+  /// 返回3D特征点地图
   std::unordered_map<size_t, Eigen::Vector3d> get_map() { return featmap; }
 
   /// Returns the true 3d map of features
@@ -137,6 +158,9 @@ protected:
    * @param[out] feats Map we will append new features to
    * @param numpts Number of points we should generate
    */
+  /**
+   * 生成特定特征点.
+  */
   void generate_points(const Eigen::Matrix3d &R_GtoI, const Eigen::Vector3d &p_IinG, int camid,
                        std::unordered_map<size_t, Eigen::Vector3d> &feats, int numpts);
 
@@ -152,9 +176,11 @@ protected:
   //===================================================================
 
   /// Our loaded trajectory data (timestamp(s), q_GtoI, p_IinG)
+  /// 读入的轨迹数据.
   std::vector<Eigen::VectorXd> traj_data;
 
   /// Our b-spline trajectory
+  /// 插值得到的spline数据
   std::shared_ptr<ov_core::BsplineSE3> spline;
 
   /// Our map of 3d features
@@ -162,15 +188,19 @@ protected:
   std::unordered_map<size_t, Eigen::Vector3d> featmap;
 
   /// Mersenne twister PRNG for measurements (IMU)
+  /// 用于生成IMU随机数的算法.
   std::mt19937 gen_meas_imu;
 
   /// Mersenne twister PRNG for measurements (CAMERAS)
+  /// 用于生成相机观测的随机数算法.
   std::vector<std::mt19937> gen_meas_cams;
 
   /// Mersenne twister PRNG for state initialization
+  /// 用于生成状态初始化的算法.
   std::mt19937 gen_state_init;
 
   /// Mersenne twister PRNG for state perturbations
+  /// 用于生成扰动状态. 
   std::mt19937 gen_state_perturb;
 
   /// If our simulation is running
@@ -181,21 +211,26 @@ protected:
   //===================================================================
 
   /// Current timestamp of the system
+  /// 当前系统的时间戳.
   double timestamp;
 
   /// Last time we had an IMU reading
+  /// 最后一次IMU读数.
   double timestamp_last_imu;
 
   /// Last time we had an CAMERA reading
   double timestamp_last_cam;
 
   /// Our running acceleration bias
+  /// 运行的加速度计 bias.
   Eigen::Vector3d true_bias_accel = Eigen::Vector3d::Zero();
 
   /// Our running gyroscope bias
+  /// 运行的陀螺仪计 bias.
   Eigen::Vector3d true_bias_gyro = Eigen::Vector3d::Zero();
 
   // Our history of true biases
+  // 真实bias记录.
   bool has_skipped_first_bias = false;
   std::vector<double> hist_true_bias_time;
   std::vector<Eigen::Vector3d> hist_true_bias_accel;

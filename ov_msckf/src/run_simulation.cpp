@@ -28,18 +28,20 @@
 #include "utils/dataset_reader.h"
 #include "utils/print.h"
 #include "utils/sensor_data.h"
-
+// ROS1的三方库
 #if ROS_AVAILABLE == 1
 #include "ros/ROS1Visualizer.h"
 #include <ros/ros.h>
+// ROS2的三方库
 #elif ROS_AVAILABLE == 2
 #include "ros/ROS2Visualizer.h"
 #include <rclcpp/rclcpp.hpp>
 #endif
 
 using namespace ov_msckf;
-
+// 仿真程序
 std::shared_ptr<Simulator> sim;
+// VIO系统
 std::shared_ptr<VioManager> sys;
 #if ROS_AVAILABLE == 1
 std::shared_ptr<ROS1Visualizer> viz;

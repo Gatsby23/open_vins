@@ -88,6 +88,7 @@ namespace ov_core {
 inline Eigen::Matrix<double, 4, 1> rot_2_quat(const Eigen::Matrix<double, 3, 3> &rot) {
   Eigen::Matrix<double, 4, 1> q;
   double T = rot.trace();
+  // Please pay attention to the condition.
   if ((rot(0, 0) >= T) && (rot(0, 0) >= rot(1, 1)) && (rot(0, 0) >= rot(2, 2))) {
     q(0) = sqrt((1 + (2 * rot(0, 0)) - T) / 4);
     q(1) = (1 / (4 * q(0))) * (rot(0, 1) + rot(1, 0));

@@ -32,12 +32,15 @@
 using namespace ov_core;
 using namespace ov_msckf;
 
+/**
+ * @brief 构造函数.
+*/
 Simulator::Simulator(VioManagerOptions &params_) {
 
   //===============================================================
   //===============================================================
-
   // Nice startup message
+  /// 启动信息.
   PRINT_DEBUG("=======================================\n");
   PRINT_DEBUG("VISUAL-INERTIAL SIMULATOR STARTING\n");
   PRINT_DEBUG("=======================================\n");
@@ -45,10 +48,13 @@ Simulator::Simulator(VioManagerOptions &params_) {
   // Store a copy of our params
   // NOTE: We need to explicitly create a copy of our shared pointers to the camera objects
   // NOTE: Otherwise if we perturb it would also change our "true" parameters
+  // 拷贝参数.
   this->params = params_;
   params.camera_intrinsics.clear();
   for (auto const &tmp : params_.camera_intrinsics) {
+    // 
     auto tmp_cast = std::dynamic_pointer_cast<ov_core::CamEqui>(tmp.second);
+    // 如果转化的话，则用的是鱼眼相机模型.
     if (tmp_cast != nullptr) {
       params.camera_intrinsics.insert({tmp.first, std::make_shared<ov_core::CamEqui>(tmp.second->w(), tmp.second->h())});
       params.camera_intrinsics.at(tmp.first)->set_value(params_.camera_intrinsics.at(tmp.first)->get_value());
@@ -59,6 +65,7 @@ Simulator::Simulator(VioManagerOptions &params_) {
   }
 
   // Load the groundtruth trajectory and its spline
+  // 读取真值轨迹，并生成对应的spline轨迹数据.
   DatasetReader::load_simulated_trajectory(params.sim_traj_path, traj_data);
   spline = std::make_shared<ov_core::BsplineSE3>();
   spline->feed_trajectory(traj_data);
