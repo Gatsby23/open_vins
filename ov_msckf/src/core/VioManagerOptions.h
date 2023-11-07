@@ -71,9 +71,11 @@ struct VioManagerOptions {
   // ESTIMATOR ===============================
 
   /// Core state options (e.g. number of cameras, use fej, stereo, what calibration to enable etc)
+  /// 核心状态选项->暂时没懂是怎么弄的？
   StateOptions state_options;
 
   /// Our state initialization options (e.g. window size, num features, if we should get the calibration)
+  /// 我们的状态初始化参数选项.
   ov_init::InertialInitializerOptions init_options;
 
   /// Delay, in seconds, that we should wait from init before we start estimating SLAM features
@@ -98,6 +100,7 @@ struct VioManagerOptions {
   bool record_timing_information = false;
 
   /// The path to the file we will record the timing information into
+  /// 用来保存时间的文件.
   std::string record_timing_filepath = "ov_msckf_timing.txt";
 
   /**
@@ -108,9 +111,12 @@ struct VioManagerOptions {
    */
   void print_and_load_estimator(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     PRINT_DEBUG("ESTIMATOR PARAMETERS:\n");
+    // 这里实际上就是读取参数，读取完后再打印出来.
     state_options.print(parser);
+    // 初始化参数读取.
     init_options.print_and_load(parser);
     if (parser != nullptr) {
+      // 接下来是zupt相关参数读取.
       parser->parse_config("dt_slam_delay", dt_slam_delay);
       parser->parse_config("try_zupt", try_zupt);
       parser->parse_config("zupt_max_velocity", zupt_max_velocity);
@@ -120,6 +126,7 @@ struct VioManagerOptions {
       parser->parse_config("record_timing_information", record_timing_information);
       parser->parse_config("record_timing_filepath", record_timing_filepath);
     }
+    // DEBUG信息输出.
     PRINT_DEBUG("  - dt_slam_delay: %.1f\n", dt_slam_delay);
     PRINT_DEBUG("  - zero_velocity_update: %d\n", try_zupt);
     PRINT_DEBUG("  - zupt_max_velocity: %.2f\n", zupt_max_velocity);
@@ -133,18 +140,23 @@ struct VioManagerOptions {
   // NOISE / CHI2 ============================
 
   /// Continuous-time IMU noise (gyroscope and accelerometer)
+  /// 连续时间下的IMU噪声.
   NoiseManager imu_noises;
 
   /// Update options for MSCKF features (pixel noise and chi2 multiplier)
+  /// MSCKF的更新方法.
   UpdaterOptions msckf_options;
 
   /// Update options for SLAM features (pixel noise and chi2 multiplier)
+  /// SLAM的特征更新方法.
   UpdaterOptions slam_options;
 
   /// Update options for ARUCO features (pixel noise and chi2 multiplier)
+  /// 如果采用ARUCO的话，则ARUCO的设置方法.
   UpdaterOptions aruco_options;
 
   /// Update options for zero velocity (chi2 multiplier)
+  /// 零速修正的相关配置.
   UpdaterOptions zupt_options;
 
   /**
@@ -185,6 +197,7 @@ struct VioManagerOptions {
   }
 
   // STATE DEFAULTS ==========================
+  /// 这里对IMU做了更多的更细致的思考，但是感觉不一定需要?
 
   /// Gravity magnitude in the global frame (i.e. should be 9.81 typically)
   double gravity_mag = 9.81;
@@ -392,35 +405,45 @@ struct VioManagerOptions {
   }
 
   // TRACKERS ===============================
+  /// 追踪配置.
 
   /// If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image.
+  /// 是否是双目？
   bool use_stereo = true;
 
   /// If we should use KLT tracking, or descriptor matcher
+  /// 是否用光流追踪.
   bool use_klt = true;
 
   /// If should extract aruco tags and estimate them
+  /// 在追踪的过程中我们是否使用ARUCO
   bool use_aruco = true;
 
   /// Will half the resolution of the aruco tag image (will be faster)
+  /// 对于ARUCO码我们是否降维来加速.
   bool downsize_aruco = true;
 
   /// Will half the resolution all tracking image (aruco will be 1/4 instead of halved if dowsize_aruoc also enabled)
+  /// 对于图像，我们是否降维来进行加速？
   bool downsample_cameras = false;
 
   /// Threads our front-end should try to use (opencv uses this also)
   int num_opencv_threads = 4;
 
   /// If our ROS image publisher should be async (if sim this should be no!)
+  /// 是否用多线程来进行发布？
   bool use_multi_threading_pubs = true;
 
   /// If our ROS subscriber callbacks should be async (if sim and serial then this should be no!)
+  /// 是否用多线程来进行订阅？
   bool use_multi_threading_subs = false;
 
   /// The number of points we should extract and track in *each* image frame. This highly effects the computation required for tracking.
+  /// 一张图像当中提取多少特征点用于后续的追踪？
   int num_pts = 150;
 
   /// Fast extraction threshold
+  /// FAST特征提取的预支.
   int fast_threshold = 20;
 
   /// Number of grids we should split column-wise to do feature extraction in
@@ -430,18 +453,23 @@ struct VioManagerOptions {
   int grid_y = 5;
 
   /// Will check after doing KLT track and remove any features closer than this
+  /// KLT的阈值》
   int min_px_dist = 10;
 
   /// What type of pre-processing histogram method should be applied to images
+  /// 直方图算法->用于降低光照变化的影响.
   ov_core::TrackBase::HistogramMethod histogram_method = ov_core::TrackBase::HistogramMethod::HISTOGRAM;
 
   /// KNN ration between top two descriptor matcher which is required to be a good match
+  /// KNN算法来判断匹配好坏.
   double knn_ratio = 0.85;
 
   /// Frequency we want to track images at (higher freq ones will be dropped)
+  /// 追踪的频率.
   double track_frequency = 20.0;
 
   /// Parameters used by our feature initialize / triangulator
+  /// 用来做特征初始化/三角化的参数配置.
   ov_core::FeatureInitializerOptions featinit_options;
 
   /**
@@ -505,19 +533,24 @@ struct VioManagerOptions {
   // SIMULATOR ===============================
 
   /// Seed for initial states (i.e. random feature 3d positions in the generated map)
+  /// 用来初始化的配置参数.
   int sim_seed_state_init = 0;
 
   /// Seed for calibration perturbations. Change this to perturb by different random values if perturbations are enabled.
+  /// 用来做扰动的噪声参数.
   int sim_seed_preturb = 0;
 
   /// Measurement noise seed. This should be incremented for each run in the Monte-Carlo simulation to generate the same true measurements,
   /// but diffferent noise values.
+  /// 观测的噪声种子.
   int sim_seed_measurements = 0;
 
   /// If we should perturb the calibration that the estimator starts with
+  /// 对于标定参数，我们是否做扰动
   bool sim_do_perturbation = false;
 
   /// Path to the trajectory we will b-spline and simulate on. Should be time(s),pos(xyz),ori(xyzw) format.
+  /// 生成的Spline样条保存的地方.
   std::string sim_traj_path = "src/open_vins/ov_data/sim/udel_gore.txt";
 
   /// We will start simulating after we have moved this much along the b-spline. This prevents static starts as we init from groundtruth in
@@ -528,12 +561,15 @@ struct VioManagerOptions {
   double sim_freq_cam = 10.0;
 
   /// Frequency (Hz) that we will simulate our inertial measurement unit
+  /// 模拟的IMU频率.
   double sim_freq_imu = 400.0;
 
   /// Feature distance we generate features from (minimum)
+  /// 模拟的特征最小距离
   double sim_min_feature_gen_distance = 5;
 
   /// Feature distance we generate features from (maximum)
+  /// 模拟的特征最大距离.
   double sim_max_feature_gen_distance = 10;
 
   /**

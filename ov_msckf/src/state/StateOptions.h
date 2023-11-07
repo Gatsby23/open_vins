@@ -94,12 +94,15 @@ struct StateOptions {
   /// Nice print function of what parameters we have loaded
   void print(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     if (parser != nullptr) {
+      // 判断是否用FEJ，FEJ可以保证有更好的一致性.
       parser->parse_config("use_fej", do_fej);
-
       // Integration method
+      // IMU的积分方法，这里默认选择是rk4->可以看下如何实现的.
       std::string integration_str = "rk4";
+      // 选择IMU的积分方法.
       parser->parse_config("integration", integration_str);
       if (integration_str == "discrete") {
+        // 这里应该用的是中值积分的方法.
         integration_method = IntegrationMethod::DISCRETE;
       } else if (integration_str == "rk4") {
         integration_method = IntegrationMethod::RK4;
@@ -111,14 +114,20 @@ struct StateOptions {
         std::exit(EXIT_FAILURE);
       }
 
-      // Calibration booleans
+      // Calibration booleans（判断是否对参数进行优化）
+      // 对外参是否优化.
       parser->parse_config("calib_cam_extrinsics", do_calib_camera_pose);
+      // 对内参是否优化.
       parser->parse_config("calib_cam_intrinsics", do_calib_camera_intrinsics);
+      // 对cam-imu之间的时间戳是否优化.
       parser->parse_config("calib_cam_timeoffset", do_calib_camera_timeoffset);
+      // 对IMU的内参是否优化->如果输入已经标定好的参数，则这里应该是false，不再需要优化.
       parser->parse_config("calib_imu_intrinsics", do_calib_imu_intrinsics);
+      // IMU的重力敏感性是否优化->如果输入已经标定好的参数，则这里应该是false，不再需要优化.
       parser->parse_config("calib_imu_g_sensitivity", do_calib_imu_g_sensitivity);
 
       // State parameters
+      // 状态相关的参数设计.
       parser->parse_config("max_clones", max_clone_size);
       parser->parse_config("max_slam", max_slam_features);
       parser->parse_config("max_slam_in_update", max_slam_in_update);
@@ -127,12 +136,16 @@ struct StateOptions {
       parser->parse_config("max_cameras", num_cameras);
 
       // Feature representations
+      // 设置特征的表示形式.
+      // MSCKF中的特征表示形式.
       std::string rep1 = ov_type::LandmarkRepresentation::as_string(feat_rep_msckf);
       parser->parse_config("feat_rep_msckf", rep1);
       feat_rep_msckf = ov_type::LandmarkRepresentation::from_string(rep1);
+      // SLAM中的特征表示形式.
       std::string rep2 = ov_type::LandmarkRepresentation::as_string(feat_rep_slam);
       parser->parse_config("feat_rep_slam", rep2);
       feat_rep_slam = ov_type::LandmarkRepresentation::from_string(rep2);
+      // ARCUO的特征表示形式.
       std::string rep3 = ov_type::LandmarkRepresentation::as_string(feat_rep_aruco);
       parser->parse_config("feat_rep_aruco", rep3);
       feat_rep_aruco = ov_type::LandmarkRepresentation::from_string(rep3);
@@ -142,6 +155,7 @@ struct StateOptions {
       parser->parse_external("relative_config_imu", "imu0", "model", imu_model_str);
       if (imu_model_str == "kalibr" || imu_model_str == "calibrated") {
         imu_model = ImuModel::KALIBR;
+      /// 这里RPNG模型不知道是什么.
       } else if (imu_model_str == "rpng") {
         imu_model = ImuModel::RPNG;
       } else {
@@ -149,6 +163,7 @@ struct StateOptions {
         PRINT_ERROR(RED "please select a valid model: kalibr, rpng\\n" RESET);
         std::exit(EXIT_FAILURE);
       }
+      // 如果已经有标定好的参数，则不要标定IMU相关参数.
       if (imu_model_str == "calibrated" && (do_calib_imu_intrinsics || do_calib_imu_g_sensitivity)) {
         PRINT_ERROR(RED "calibrated IMU model selected, but requested calibration!\n" RESET);
         PRINT_ERROR(RED "please select what model you have: kalibr, rpng\n" RESET);

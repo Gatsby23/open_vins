@@ -68,9 +68,12 @@ public:
 
   /**
    * @brief Will get a set of perturbed parameters
+   *        这里我们将得到扰动的参数.
    * @param gen_state Random number gen to use
+   *        这里是用来生成状态的随机数种子.
    * @param params_ Parameters we will perturb
-   */
+   *        这里是与扰动相关的参数.
+   **/
   static void perturb_parameters(std::mt19937 gen_state, VioManagerOptions &params_);
 
   /**
@@ -136,11 +139,13 @@ public:
   }
 
   /// Access function to get the true parameters (i.e. calibration and settings)
+  /// 获得真实的VIO参数.
   VioManagerOptions get_true_parameters() { return params; }
 
 protected:
   /**
    * @brief Projects the passed map features into the desired camera frame.
+   *        将相关的3D电晕投射到某一帧相机上进行观测.
    * @param R_GtoI Orientation of the IMU pose
    * @param p_IinG Position of the IMU pose
    * @param camid Camera id of the camera sensor we want to project into
@@ -152,15 +157,13 @@ protected:
 
   /**
    * @brief Will generate points in the fov of the specified camera
+   *        由某一帧的观测生成对应的电晕.
    * @param R_GtoI Orientation of the IMU pose
    * @param p_IinG Position of the IMU pose
    * @param camid Camera id of the camera sensor we want to project into
    * @param[out] feats Map we will append new features to
    * @param numpts Number of points we should generate
    */
-  /**
-   * 生成特定特征点.
-  */
   void generate_points(const Eigen::Matrix3d &R_GtoI, const Eigen::Vector3d &p_IinG, int camid,
                        std::unordered_map<size_t, Eigen::Vector3d> &feats, int numpts);
 

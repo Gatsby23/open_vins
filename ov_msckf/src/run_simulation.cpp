@@ -85,17 +85,20 @@ int main(int argc, char **argv) {
 #endif
 
   // Verbosity
+  // 设置整体屏幕输出等级，依据等级不同，输出的信息不同.
   std::string verbosity = "INFO";
   parser->parse_config("verbosity", verbosity);
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Create our VIO system
+  // VIO系统的参数.
   VioManagerOptions params;
   params.print_and_load(parser);
   params.print_and_load_simulation(parser);
   params.num_opencv_threads = 0; // for repeatability
   params.use_multi_threading_pubs = false;
   params.use_multi_threading_subs = false;
+  // 依据参数进行初始化.
   sim = std::make_shared<Simulator>(params);
   sys = std::make_shared<VioManager>(params);
 #if ROS_AVAILABLE == 1

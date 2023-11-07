@@ -53,7 +53,9 @@ struct InertialInitializerOptions {
    * @param parser If not null, this parser will be used to load our parameters
    */
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
+    // 读取初始化相关参数.
     print_and_load_initializer(parser);
+    // 读取噪声相关参数.
     print_and_load_noise(parser);
     print_and_load_state(parser);
   }
@@ -122,12 +124,15 @@ struct InertialInitializerOptions {
    * @param parser If not null, this parser will be used to load our parameters
    */
   void print_and_load_initializer(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
+    // 初始化相关参数.
     PRINT_DEBUG("INITIALIZATION SETTINGS:\n");
     if (parser != nullptr) {
+      // 初始化相关参数.
       parser->parse_config("init_window_time", init_window_time);
       parser->parse_config("init_imu_thresh", init_imu_thresh);
       parser->parse_config("init_max_disparity", init_max_disparity);
       parser->parse_config("init_max_features", init_max_features);
+      // 是否使用动态初始化.
       parser->parse_config("init_dyn_use", init_dyn_use);
       parser->parse_config("init_dyn_mle_opt_calib", init_dyn_mle_opt_calib);
       parser->parse_config("init_dyn_mle_max_iter", init_dyn_mle_max_iter);
@@ -156,18 +161,21 @@ struct InertialInitializerOptions {
       PRINT_ERROR(RED "  init_max_features = %d\n" RESET, init_max_features);
       std::exit(EXIT_FAILURE);
     }
+    // 静态初始化相关参数.
     if (init_imu_thresh <= 0.0 && !init_dyn_use) {
       PRINT_ERROR(RED "need to have an IMU threshold for static initialization!\n" RESET);
       PRINT_ERROR(RED "  init_imu_thresh = %.3f\n" RESET, init_imu_thresh);
       PRINT_ERROR(RED "  init_dyn_use = %d\n" RESET, init_dyn_use);
       std::exit(EXIT_FAILURE);
     }
+    // 静态初始化相关参数.
     if (init_max_disparity <= 0.0 && !init_dyn_use) {
       PRINT_ERROR(RED "need to have an DISPARITY threshold for static initialization!\n" RESET);
       PRINT_ERROR(RED "  init_max_disparity = %.3f\n" RESET, init_max_disparity);
       PRINT_ERROR(RED "  init_dyn_use = %d\n" RESET, init_dyn_use);
       std::exit(EXIT_FAILURE);
     }
+    // 动态初始化相关参数.
     PRINT_DEBUG("  - init_dyn_use: %d\n", init_dyn_use);
     PRINT_DEBUG("  - init_dyn_mle_opt_calib: %d\n", init_dyn_mle_opt_calib);
     PRINT_DEBUG("  - init_dyn_mle_max_iter: %d\n", init_dyn_mle_max_iter);

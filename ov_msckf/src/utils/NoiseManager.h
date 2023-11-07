@@ -30,6 +30,7 @@ namespace ov_msckf {
 
 /**
  * @brief Struct of our imu noise parameters
+ * 注意第一点！离散噪声还是连续噪声？
  */
 struct NoiseManager {
 

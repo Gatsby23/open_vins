@@ -55,26 +55,36 @@ namespace ov_core {
  * NOTE: The camera and imu have nested, but those are handled externally.
  * They first read the "imu0" or "cam1" level, after-which all values are at the same level.
  */
+/********************************************************
+ * @brief 该类就是封装opencv yaml三方库，来实现对配置读取.
+ *******************************************************/
 class YamlParser {
 public:
   /**
    * @brief Constructor that loads all three configuration files
+   *        参数读取构造器，用来读取三个配置文件.
    * @param config_path Path to the YAML file we will parse
+   *        需要读取配置文件的地址.
    * @param fail_if_not_found If we should terminate the program if we can't open the config file
+   *        告诉程序有没有找到配置文件.->这个参数感觉没必要存在，因为其值永远是true.
+   * 这里explicit关键字可以有效地避免隐式转换，避免引入了不必要的性能开销.
    */
   explicit YamlParser(const std::string &config_path, bool fail_if_not_found = true) : config_path_(config_path) {
 
     // Check if file exists
+    // 检查地址是否存在.
     if (!fail_if_not_found && !boost::filesystem::exists(config_path)) {
       config = nullptr;
       return;
     }
+    // 如果没有找到则直接退出.
     if (!boost::filesystem::exists(config_path)) {
       PRINT_ERROR(RED "unable to open the configuration file!\n%s\n" RESET, config_path.c_str());
       std::exit(EXIT_FAILURE);
     }
 
     // Open the file, error if we can't
+    // 打开该文件并进行读取.
     config = std::make_shared<cv::FileStorage>(config_path, cv::FileStorage::READ);
     if (!fail_if_not_found && !config->isOpened()) {
       config = nullptr;
@@ -114,13 +124,13 @@ public:
    * This will load the data from the main config file.
    * If it is unable it will give a warning to the user it couldn't be found.
    *
-   * @tparam T Type of parameter we are looking for.
+   * @tparam T Type of parameter we are looking for.->这里为什么要用模板类有点没看明白，感觉所有的读取都是生成string.
    * @param node_name Name of the node
    * @param node_result Resulting value (should already have default value in it)
    * @param required If this parameter is required by the user to set
    */
   template <class T> void parse_config(const std::string &node_name, T &node_result, bool required = true) {
-
+  // 如果是ROS1的话，用下面的函数来解析配置文件.
 #if ROS_AVAILABLE == 1
     if (nh != nullptr && nh->getParam(node_name, node_result)) {
       PRINT_INFO(GREEN "overriding node " BOLDGREEN "%s" RESET GREEN " with value from ROS!\n" RESET, node_name.c_str());
@@ -134,8 +144,8 @@ public:
       return;
     }
 #endif
-
     // Else we just parse from the YAML file!
+    // ROS-Free版本解析配置文件的方法.
     parse_config_yaml(node_name, node_result, required);
   }
 
@@ -175,6 +185,7 @@ public:
 #endif
 
     // Else we just parse from the YAML file!
+    /// 从yaml中读取外参信息.
     parse_external_yaml(external_node_name, sensor_name, node_name, node_result, required);
   }
 
@@ -309,12 +320,15 @@ public:
 
 private:
   /// Path to the config file
+  /// 配置文件地址.
   std::string config_path_;
 
   /// Our config file with the data in it
+  /// 读取配置文件数据.
   std::shared_ptr<cv::FileStorage> config;
 
   /// Record if all parameters were found
+  /// 标志位，用来说明是不是所有的参数都读取了
   bool all_params_found_successfully = true;
 
 #if ROS_AVAILABLE == 1
@@ -540,7 +554,7 @@ private:
    * This will load the data from the main config file.
    * If it is unable it will give a warning to the user it couldn't be found.
    *
-   * @tparam T Type of parameter we are looking for.
+   * @tparam T Type of parameter we are looking for.->对不同对象做解析，所以要用模板类.
    * @param node_name Name of the node
    * @param node_result Resulting value (should already have default value in it)
    * @param required If this parameter is required by the user to set
