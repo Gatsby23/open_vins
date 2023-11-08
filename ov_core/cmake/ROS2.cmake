@@ -6,7 +6,7 @@ find_package(rclcpp REQUIRED)
 find_package(cv_bridge REQUIRED)
 
 # Describe ROS project
-option(ENABLE_ROS "Enable or disable building with ROS (if it is found)" OFF)
+option(ENABLE_ROS "Enable or disable building with ROS (if it is found)" ON)
 if (NOT ENABLE_ROS)
     message(FATAL_ERROR "Build with ROS1.cmake if you don't have ROS.")
 endif ()
