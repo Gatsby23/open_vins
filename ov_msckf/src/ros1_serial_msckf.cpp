@@ -248,6 +248,7 @@ int main(int argc, char **argv) {
       }
 
       // Check if we should initialize using the groundtruth
+      // 我们在现实数据集中表现不好的原因，会不会是因为我们并没有提供gt数据？
       Eigen::Matrix<double, 17, 1> imustate;
       if (!gt_states.empty() && !sys->initialized() && ov_core::DatasetReader::get_gt_state(meas_time, imustate, gt_states)) {
         // biases are pretty bad normally, so zero them

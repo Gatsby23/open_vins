@@ -201,7 +201,7 @@ void VioManager::feed_measurement_simulation(double timestamp, const std::vector
     // Replace with the simulated tracker
     trackSIM = std::make_shared<TrackSIM>(state->_cam_intrinsics_cameras, state->_options.max_aruco_features);
     trackFEATS = trackSIM;
-    // Need to also replace it in init and zv-upt since it points to the trackFEATS db pointer
+    // Need to also replace it in init and zupt since it points to the trackFEATS db pointer
     initializer = std::make_shared<ov_init::InertialInitializer>(params.init_options, trackFEATS->get_feature_database());
     if (params.try_zupt) {
       updaterZUPT = std::make_shared<UpdaterZeroVelocity>(params.zupt_options, params.imu_noises, trackFEATS->get_feature_database(),
@@ -544,6 +544,7 @@ void VioManager::do_feature_propagate_update(const ov_core::CameraData &message)
   }
   feats_slam_UPDATE = feats_slam_UPDATE_TEMP;
   rT5 = boost::posix_time::microsec_clock::local_time();
+  // 延迟初始化.
   updaterSLAM->delayed_init(state, feats_slam_DELAYED);
   rT6 = boost::posix_time::microsec_clock::local_time();
 

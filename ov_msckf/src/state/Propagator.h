@@ -36,6 +36,7 @@ class State;
 
 /**
  * @brief Performs the state covariance and mean propagation using imu measurements
+ *        这里的说法是中值积分来做Propagte，但是配置文件中明明是可以选择LK4
  *
  * We will first select what measurements we need to propagate with.
  * We then compute the state transition matrix at each step and update the state and covariance.

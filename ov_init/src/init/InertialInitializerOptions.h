@@ -50,7 +50,9 @@ struct InertialInitializerOptions {
 
   /**
    * @brief This function will load the non-simulation parameters of the system and print.
+   *        此函数将加载系统的参数并打印出来
    * @param parser If not null, this parser will be used to load our parameters
+   *        用来读取参数的函数指针.
    */
   void print_and_load(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     // 读取初始化相关参数.
@@ -63,58 +65,76 @@ struct InertialInitializerOptions {
   // INITIALIZATION ============================
 
   /// Amount of time we will initialize over (seconds)
+  /// 用来初始化的时间（秒）
   double init_window_time = 1.0;
 
   /// Variance threshold on our acceleration to be classified as moving
+  /// 通过加速度计来判断载体是否移动的阈值参数.
   double init_imu_thresh = 1.0;
 
   /// Max disparity we will consider the unit to be stationary
+  /// 通过视差来判断当前载体是静止还是移动.
   double init_max_disparity = 1.0;
 
   /// Number of features we should try to track
+  /// 初始化中，我们该用多少特征来进行追踪.
   int init_max_features = 50;
 
   /// If we should perform dynamic initialization
+  /// 我们是否采用动态初始化.
   bool init_dyn_use = false;
 
   /// If we should optimize and recover the calibration in our MLE
+  /// 在最大似然估计的时候，我们是否优化标定参数.
   bool init_dyn_mle_opt_calib = false;
 
   /// Max number of MLE iterations for dynamic initialization
+  /// 动态初始化过程中的最大迭代次数.
   int init_dyn_mle_max_iter = 20;
 
   /// Max number of MLE threads for dynamic initialization
+  /// 动态初始化中，最大似然估计中用到的最多现成数.
   int init_dyn_mle_max_threads = 20;
 
   /// Max time for MLE optimization (seconds)
+  /// 动态初始化中，最大似然估计中用到的最多时间.
   double init_dyn_mle_max_time = 5.0;
 
   /// Number of poses to use during initialization (max should be cam freq * window)
+  /// 初始化过程中，用到最多的位姿数目.
   int init_dyn_num_pose = 5;
 
   /// Minimum degrees we need to rotate before we try to init (sum of norm)
+  /// 动态初始化中，最小的旋转角度需求.
   double init_dyn_min_deg = 45.0;
 
   /// Magnitude we will inflate initial covariance of orientation
+  /// 旋转的变化大小.
   double init_dyn_inflation_orientation = 10.0;
 
   /// Magnitude we will inflate initial covariance of velocity
+  /// 移动的速度大小.
   double init_dyn_inflation_velocity = 10.0;
 
   /// Magnitude we will inflate initial covariance of gyroscope bias
+  //// 关于gyro bias的方差变化.
   double init_dyn_inflation_bias_gyro = 100.0;
 
   /// Magnitude we will inflate initial covariance of accelerometer bias
+  /// 加速度计bias在动态初始化过程中，bias方差的变化.
   double init_dyn_inflation_bias_accel = 100.0;
 
   /// Minimum reciprocal condition number acceptable for our covariance recovery (min_sigma / max_sigma <
   /// sqrt(min_reciprocal_condition_number))
+  /// 这里不知道是什么.
   double init_dyn_min_rec_cond = 1e-15;
 
   /// Initial IMU gyroscope bias values for dynamic initialization (will be optimized)
+  /// 用于优化的gyro bias.
   Eigen::Vector3d init_dyn_bias_g = Eigen::Vector3d::Zero();
 
   /// Initial IMU accelerometer bias values for dynamic initialization (will be optimized)
+  /// 用于优化的acc bias.
   Eigen::Vector3d init_dyn_bias_a = Eigen::Vector3d::Zero();
 
   /**
@@ -200,6 +220,7 @@ struct InertialInitializerOptions {
   // NOISE / CHI2 ============================
 
   /// Gyroscope white noise (rad/s/sqrt(hz))
+  /// 白噪声（rad/s/sqrt(hz)）->单位说明是连续噪声.
   double sigma_w = 1.6968e-04;
 
   /// Gyroscope random walk (rad/s^2/sqrt(hz))
@@ -212,6 +233,7 @@ struct InertialInitializerOptions {
   double sigma_ab = 3.0000e-03;
 
   /// Noise sigma for our raw pixel measurements
+  /// 用来描述图像噪声.
   double sigma_pix = 1;
 
   /**
@@ -239,24 +261,31 @@ struct InertialInitializerOptions {
   // STATE DEFAULTS ==========================
 
   /// Gravity magnitude in the global frame (i.e. should be 9.81 typically)
+  /// 重力敏感性.
   double gravity_mag = 9.81;
 
   /// Number of distinct cameras that we will observe features in
+  /// 用到几个相机用来观察特征.
   int num_cameras = 1;
 
   /// If we should process two cameras are being stereo or binocular. If binocular, we do monocular feature tracking on each image.
+  /// 是否使用双目
   bool use_stereo = true;
 
   /// Will half the resolution all tracking image (aruco will be 1/4 instead of halved if dowsize_aruoc also enabled)
+  /// 是否对相机图像降采样.
   bool downsample_cameras = false;
 
   /// Time offset between camera and IMU (t_imu = t_cam + t_off)
+  /// 是否标定IMU和相机的时间戳参数.
   double calib_camimu_dt = 0.0;
 
   /// Map between camid and camera intrinsics (fx, fy, cx, cy, d1...d4, cam_w, cam_h)
+  /// 关于IMU内参.
   std::unordered_map<size_t, std::shared_ptr<ov_core::CamBase>> camera_intrinsics;
 
   /// Map between camid and camera extrinsics (q_ItoC, p_IinC).
+  /// 外参.
   std::map<size_t, Eigen::VectorXd> camera_extrinsics;
 
   /**
@@ -354,7 +383,7 @@ struct InertialInitializerOptions {
   }
 
   // SIMULATOR ===============================
-
+  // 仿真相关的初始化配置参数=====================
   /// Seed for initial states (i.e. random feature 3d positions in the generated map)
   int sim_seed_state_init = 0;
 

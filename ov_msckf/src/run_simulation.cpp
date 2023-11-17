@@ -119,6 +119,7 @@ int main(int argc, char **argv) {
 
   // Get initial state
   // NOTE: we are getting it at the *next* timestep so we get the first IMU message
+  // 下一时刻的IMU时间戳应该依据IMU的频率得到，当前时间戳+间隔时间就好.
   double next_imu_time = sim->current_timestamp() + 1.0 / params.sim_freq_imu;
   Eigen::Matrix<double, 17, 1> imustate;
   bool success = sim->get_state(next_imu_time, imustate);
