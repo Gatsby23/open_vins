@@ -55,7 +55,7 @@ init_dyn_inflation_vel: 100
 init_dyn_inflation_bg: 10
 init_dyn_inflation_ba: 100
 init_dyn_min_rec_cond: 1e-20 # traj is mostly straight line motion
-
+# 这个配置是用来做什么的，有点没弄懂.
 init_dyn_bias_g: [0.0, 0.0, 0.0]
 init_dyn_bias_a: [0.0, 0.0, 0.0]
 

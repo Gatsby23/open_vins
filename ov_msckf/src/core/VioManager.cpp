@@ -171,12 +171,15 @@ void VioManager::feed_measurement_imu(const ov_core::ImuData &message) {
   if (oldest_time > state->_timestamp) {
     oldest_time = -1;
   }
+  // 未初始化阶段，会往前走一个传感器帧，用来做同步.
   if (!is_initialized_vio) {
     oldest_time = message.timestamp - params.init_options.init_window_time + state->_calib_dt_CAMtoIMU->value()(0) - 0.10;
   }
+  // 递推.
   propagator->feed_imu(message, oldest_time);
 
   // Push back to our initializer
+  // 初始化.
   if (!is_initialized_vio) {
     initializer->feed_imu(message, oldest_time);
   }

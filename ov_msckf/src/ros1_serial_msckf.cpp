@@ -47,26 +47,32 @@ int main(int argc, char **argv) {
   }
 
   // Launch our ros node
+  // 启动ROS节点.
   ros::init(argc, argv, "ros1_serial_msckf");
   auto nh = std::make_shared<ros::NodeHandle>("~");
   nh->param<std::string>("config_path", config_path, config_path);
 
   // Load the config
+  // 读取配置文件.
   auto parser = std::make_shared<ov_core::YamlParser>(config_path);
   parser->set_node_handler(nh);
 
   // Verbosity
+  // 设置输出等级.
   std::string verbosity = "INFO";
   parser->parse_config("verbosity", verbosity);
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Create our VIO system
+  // 创建VIO系统，配置文件操作.
   VioManagerOptions params;
   params.print_and_load(parser);
   // params.num_opencv_threads = 0; // uncomment if you want repeatability
   // params.use_multi_threading_pubs = 0; // uncomment if you want repeatability
   params.use_multi_threading_subs = false;
+  // 依据配置文件来创建系统.
   sys = std::make_shared<VioManager>(params);
+  // 创建ROS可视化部分.
   viz = std::make_shared<ROS1Visualizer>(nh, sys);
 
   // Ensure we read in all parameters required
@@ -80,12 +86,14 @@ int main(int argc, char **argv) {
   //===================================================================================
 
   // Our imu topic
+  // 获得对应的IMU的ROS topic接口.
   std::string topic_imu;
   nh->param<std::string>("topic_imu", topic_imu, "/imu0");
   parser->parse_external("relative_config_imu", "imu0", "rostopic", topic_imu);
   PRINT_DEBUG("[SERIAL]: imu: %s\n", topic_imu.c_str());
 
   // Our camera topics
+  // 获得对应的相机的ROS topic接口.
   std::vector<std::string> topic_cameras;
   for (int i = 0; i < params.state_options.num_cameras; i++) {
     std::string cam_topic;
@@ -96,12 +104,14 @@ int main(int argc, char **argv) {
   }
 
   // Location of the ROS bag we want to read in
+  // 得到ROS bag包的地址.
   std::string path_to_bag;
   nh->param<std::string>("path_bag", path_to_bag, "/home/patrick/datasets/eth/V1_01_easy.bag");
   PRINT_DEBUG("[SERIAL]: ros bag path is: %s\n", path_to_bag.c_str());
 
   // Load groundtruth if we have it
   // NOTE: needs to be a csv ASL format file
+  // 获得真值，用于后续的标定处理.
   std::map<double, Eigen::Matrix<double, 17, 1>> gt_states;
   if (nh->hasParam("path_gt")) {
     std::string path_to_gt;
@@ -123,7 +133,7 @@ int main(int argc, char **argv) {
   //===================================================================================
   //===================================================================================
   //===================================================================================
-
+  /// 这里需要注意下，他们是使用ROS离线对ROSbag处理来做操作的.
   // Load rosbag here, and find messages we can play
   rosbag::Bag bag;
   bag.open(path_to_bag, rosbag::bagmode::Read);
@@ -135,12 +145,14 @@ int main(int argc, char **argv) {
 
   // Start a few seconds in from the full view time
   // If we have a negative duration then use the full bag length
+  // 获得系统的起始和结束时间.
   view_full.addQuery(bag);
   ros::Time time_init = view_full.getBeginTime();
   time_init += ros::Duration(bag_start);
   ros::Time time_finish = (bag_durr < 0) ? view_full.getEndTime() : time_init + ros::Duration(bag_durr);
   PRINT_DEBUG("time start = %.6f\n", time_init.toSec());
   PRINT_DEBUG("time end   = %.6f\n", time_finish.toSec());
+  // 这里相当于把Bag中的所有信息读进来.
   view.addQuery(bag, time_init, time_finish);
 
   // Check to make sure we have data to play
@@ -205,6 +217,7 @@ int main(int argc, char **argv) {
     }
 
     // IMU processing
+    // 通过viz这个类来同步IMU数据.
     if (msgs.at(m).getTopic() == topic_imu) {
       // PRINT_DEBUG("processing imu = %.3f sec\n", msgs.at(m).getTime().toSec() - time_init.toSec());
       viz->callback_inertial(msgs.at(m).instantiate<sensor_msgs::Imu>());

@@ -67,6 +67,7 @@ public:
 
     // Append it to our vector
     std::lock_guard<std::mutex> lck(imu_data_mtx);
+    // 这里保存imu.
     imu_data.emplace_back(message);
 
     // Clean old measurements
