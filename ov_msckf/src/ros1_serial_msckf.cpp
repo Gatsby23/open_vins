@@ -58,24 +58,26 @@ int main(int argc, char **argv) {
   parser->set_node_handler(nh);
 
   // Verbosity
-  // 设置输出等级.
-  std::string verbosity = "INFO";
+  // 设置输出等级，依据设计的登记不同，而打印出来的信息不同。
+  std::string verbosity = "Debug";
   parser->parse_config("verbosity", verbosity);
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Create our VIO system
-  // 创建VIO系统，配置文件操作.
+  // 创建VIO系统，配置文件操作，这里是读取所有的参数。
   VioManagerOptions params;
+  // 感觉没必要两次？
   params.print_and_load(parser);
   // params.num_opencv_threads = 0; // uncomment if you want repeatability
   // params.use_multi_threading_pubs = 0; // uncomment if you want repeatability
   params.use_multi_threading_subs = false;
-  // 依据配置文件来创建系统.
+  // 依据配置文件来创建系统核系统中的子模块（Propagator，Initializer，Updater，ZUPT Updater）.
   sys = std::make_shared<VioManager>(params);
-  // 创建ROS可视化部分.
+  // 创建ROS可视化部分，这里也是后续用于交互的部分.
   viz = std::make_shared<ROS1Visualizer>(nh, sys);
 
   // Ensure we read in all parameters required
+  // 如果有参数没有读取成功，则退出重新设置配置文件.
   if (!parser->successful()) {
     PRINT_ERROR(RED "[SERIAL]: unable to parse all parameters, please fix\n" RESET);
     std::exit(EXIT_FAILURE);
@@ -86,14 +88,14 @@ int main(int argc, char **argv) {
   //===================================================================================
 
   // Our imu topic
-  // 获得对应的IMU的ROS topic接口.
+  // 设置IMU的ROS topic接口.
   std::string topic_imu;
   nh->param<std::string>("topic_imu", topic_imu, "/imu0");
   parser->parse_external("relative_config_imu", "imu0", "rostopic", topic_imu);
   PRINT_DEBUG("[SERIAL]: imu: %s\n", topic_imu.c_str());
 
   // Our camera topics
-  // 获得对应的相机的ROS topic接口.
+  // 设置相机的ROS topic接口.
   std::vector<std::string> topic_cameras;
   for (int i = 0; i < params.state_options.num_cameras; i++) {
     std::string cam_topic;
@@ -111,7 +113,7 @@ int main(int argc, char **argv) {
 
   // Load groundtruth if we have it
   // NOTE: needs to be a csv ASL format file
-  // 获得真值，用于后续的标定处理.
+  // 设置数据包对应的真值文件.
   std::map<double, Eigen::Matrix<double, 17, 1>> gt_states;
   if (nh->hasParam("path_gt")) {
     std::string path_to_gt;
@@ -125,6 +127,7 @@ int main(int argc, char **argv) {
   // Get our start location and how much of the bag we want to play
   // Make the bag duration < 0 to just process to the end of the bag
   double bag_start, bag_durr;
+  // 设置我们读取Bag的时间段(start -> end)。
   nh->param<double>("bag_start", bag_start, 0);
   nh->param<double>("bag_durr", bag_durr, -1);
   PRINT_DEBUG("[SERIAL]: bag start: %.1f\n", bag_start);
@@ -167,6 +170,7 @@ int main(int argc, char **argv) {
   // NOTE: if we instantiate messages here, this requires the whole bag to be read
   // NOTE: thus we just check the topic which allows us to quickly loop through the index
   // NOTE: see this PR https://github.com/ros/ros_comm/issues/117
+  // 把ROSBag中的信息全部放到msg这个vector库中准备用于后续的状态更新.
   double max_camera_time = -1;
   std::vector<rosbag::MessageInstance> msgs;
   for (const rosbag::MessageInstance &msg : view) {

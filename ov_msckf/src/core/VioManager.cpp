@@ -55,6 +55,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   PRINT_DEBUG("=======================================\n");
 
   // Nice debug
+  // 感觉没必要再输出一遍.
   this->params = params_;
   params.print_and_load_estimator();
   params.print_and_load_noise();
@@ -63,6 +64,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
 
   // This will globally set the thread count we will use
   // -1 will reset to the system default threading (usually the num of cores)
+  // 设置opencv全局使用时的线程数，如果设置-1的话，则由系统自己设定（由系统核数来定）
   cv::setNumThreads(params.num_opencv_threads);
   cv::setRNGSeed(0);
 
@@ -70,6 +72,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   state = std::make_shared<State>(params.state_options);
 
   // Set the IMU intrinsics
+  // 设定IMU的内参.
   state->_calib_imu_dw->set_value(params.vec_dw);
   state->_calib_imu_dw->set_fej(params.vec_dw);
   state->_calib_imu_da->set_value(params.vec_da);
@@ -82,6 +85,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   state->_calib_imu_ACCtoIMU->set_fej(params.q_ACCtoIMU);
 
   // Timeoffset from camera to IMU
+  // 设定相机到IMU的时间差.
   Eigen::VectorXd temp_camimu_dt;
   temp_camimu_dt.resize(1);
   temp_camimu_dt(0) = params.calib_camimu_dt;
@@ -89,6 +93,7 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   state->_calib_dt_CAMtoIMU->set_fej(temp_camimu_dt);
 
   // Loop through and load each of the cameras
+  // 读取相机内参（循环读取.）
   state->_cam_intrinsics_cameras = params.camera_intrinsics;
   for (int i = 0; i < state->_options.num_cameras; i++) {
     state->_cam_intrinsics.at(i)->set_value(params.camera_intrinsics.at(i)->get_value());
@@ -102,18 +107,23 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   //===================================================================================
 
   // If we are recording statistics, then open our file
+  // 关于数据记录.
   if (params.record_timing_information) {
     // If the file exists, then delete it
+    // 如果之前已经有记录文件，则先删除之前的文件.
     if (boost::filesystem::exists(params.record_timing_filepath)) {
       boost::filesystem::remove(params.record_timing_filepath);
       PRINT_INFO(YELLOW "[STATS]: found old file found, deleted...\n" RESET);
     }
     // Create the directory that we will open the file in
+    // 创建对应的文件夹.
     boost::filesystem::path p(params.record_timing_filepath);
     boost::filesystem::create_directories(p.parent_path());
     // Open our statistics file!
+    // 创建需要保存的文件.
     of_statistics.open(params.record_timing_filepath, std::ofstream::out | std::ofstream::app);
     // Write the header information into it
+    // 写头文件.
     of_statistics << "# timestamp (sec),tracking,propagation,msckf update,";
     if (state->_options.max_slam_features > 0) {
       of_statistics << "slam update,slam delayed,";
@@ -128,12 +138,16 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   // Let's make a feature extractor
   // NOTE: after we initialize we will increase the total number of feature tracks
   // NOTE: we will split the total number of features over all cameras uniformly
+  // 每个摄像头最多追踪多少特征.
   int init_max_features = std::floor((double)params.init_options.init_max_features / (double)params.state_options.num_cameras);
+
   if (params.use_klt) {
+    // 如果使用光流追踪的话，则创建KLT光流追踪器
     trackFEATS = std::shared_ptr<TrackBase>(new TrackKLT(state->_cam_intrinsics_cameras, init_max_features,
                                                          state->_options.max_aruco_features, params.use_stereo, params.histogram_method,
                                                          params.fast_threshold, params.grid_x, params.grid_y, params.min_px_dist));
   } else {
+    // 如果不使用光流追踪的话，则创建特征点追踪器
     trackFEATS = std::shared_ptr<TrackBase>(new TrackDescriptor(
         state->_cam_intrinsics_cameras, init_max_features, state->_options.max_aruco_features, params.use_stereo, params.histogram_method,
         params.fast_threshold, params.grid_x, params.grid_y, params.min_px_dist, params.knn_ratio));
@@ -146,16 +160,20 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   }
 
   // Initialize our state propagator
+  // 初始化我们的递推器.
   propagator = std::make_shared<Propagator>(params.imu_noises, params.gravity_mag);
 
   // Our state initialize
+  // 初始化我们的VIO状态初始化器.
   initializer = std::make_shared<ov_init::InertialInitializer>(params.init_options, trackFEATS->get_feature_database());
 
   // Make the updater!
+  // 初始化我们的更新器->MSCKF的方式，和SLAM的方式.
   updaterMSCKF = std::make_shared<UpdaterMSCKF>(params.msckf_options, params.featinit_options);
   updaterSLAM = std::make_shared<UpdaterSLAM>(params.slam_options, params.aruco_options, params.featinit_options);
 
   // If we are using zero velocity updates, then create the updater
+  // 如果我们设定了零速修正，则也创建零速修正.
   if (params.try_zupt) {
     updaterZUPT = std::make_shared<UpdaterZeroVelocity>(params.zupt_options, params.imu_noises, trackFEATS->get_feature_database(),
                                                         propagator, params.gravity_mag, params.zupt_max_velocity,
@@ -281,6 +299,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   }
 
   // Perform our feature tracking!
+  // 注意到这里无论有没有初始化，都对特征进行了追踪.
   trackFEATS->feed_new_camera(message);
 
   // If the aruco tracker is available, the also pass to it
@@ -311,6 +330,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   // If we do not have VIO initialization, then try to initialize
   // TODO: Or if we are trying to reset the system, then do that here!
   if (!is_initialized_vio) {
+    // 尝试初始化.
     is_initialized_vio = try_to_initialize(message);
     if (!is_initialized_vio) {
       double time_track = (rT2 - rT1).total_microseconds() * 1e-6;

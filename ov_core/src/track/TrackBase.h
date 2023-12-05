@@ -53,7 +53,11 @@ class FeatureDatabase;
  * The feature tracks store both the raw (distorted) and undistorted/normalized values.
  * Right now we just support two camera models, see: undistort_point_brown() and undistort_point_fisheye().
  *
+ * 视觉追踪器的基类，用于支持多种追踪的方法.特征跟踪存储了原始（畸变的）和未畸变/归一化的值。目前我们只支持两种相机模型，参见：
+ * undistort_point_brown() 和 undistort_point_fisheye()。
+ *
  * @m_class{m-note m-warning}
+ * 这里的m-note和m-warning是什么意思，没有太get到.
  *
  * @par A Note on Multi-Threading Support
  * There is some support for asynchronous multi-threaded feature tracking of independent cameras.
@@ -63,7 +67,7 @@ class FeatureDatabase;
  * that all features have unique id values. We also have mutex for access for the calibration and previous images and tracks (used during
  * visualization). It should be noted that if a thread calls visualization, it might hang or the feed thread might, due to acquiring the
  * mutex for that specific camera id / feed.
- *
+ * 这里的多线程方式并不是指在一个相机上采用并行的方式来进行特征提取。而是指当有多个不同相机的时候，通过不同的线程对不同的特征来进行提取。
  * This base class also handles most of the heavy lifting with the visualization, but the sub-classes can override
  * this and do their own logic if they want (i.e. the TrackAruco has its own logic for visualization).
  * This visualization needs access to the prior images and their tracks, thus must synchronise in the case of multi-threading.
@@ -75,15 +79,20 @@ public:
   /**
    * @brief Desired pre-processing image method.
    */
+  ///@brief 图像的预处理方法(不处理，直方图形式，CLAHE方式).
   enum HistogramMethod { NONE, HISTOGRAM, CLAHE };
 
   /**
    * @brief Public constructor with configuration variables
    * @param cameras camera calibration object which has all camera intrinsics in it
+   *                camera的标定对象，包含具体的内参.
    * @param numfeats number of features we want want to track (i.e. track 200 points from frame to frame)
+   *                具体的追踪特征数量.
    * @param numaruco the max id of the arucotags, so we ensure that we start our non-auroc features above this value
    * @param stereo if we should do stereo feature tracking or binocular
+   *               追踪双目还是单目？
    * @param histmethod what type of histogram pre-processing should be done (histogram eq?)
+   *               什么样的预处理方法？
    */
   TrackBase(std::unordered_map<size_t, std::shared_ptr<CamBase>> cameras, int numfeats, int numaruco, bool stereo,
             HistogramMethod histmethod);
@@ -92,16 +101,23 @@ public:
 
   /**
    * @brief Process a new image
+   *        对一张图像处理.
    * @param message Contains our timestamp, images, and camera ids
+   *                图像消息，包含时间戳，图像和相机ID.
    */
   virtual void feed_new_camera(const CameraData &message) = 0;
 
   /**
    * @brief Shows features extracted in the last image
+   *        在最近的图像上提取特征.
    * @param img_out image to which we will overlayed features on
+   *        把特征画上的图像.
    * @param r1,g1,b1 first color to draw in
+   *        第一次的颜色.
    * @param r2,g2,b2 second color to draw in
+   *        第二次的颜色
    * @param overlay Text overlay to replace to normal "cam0" in the top left of screen
+   *        这个不知道什么意思.
    */
   virtual void display_active(cv::Mat &img_out, int r1, int g1, int b1, int r2, int g2, int b2, std::string overlay = "");
 
@@ -118,7 +134,9 @@ public:
 
   /**
    * @brief Get the feature database with all the track information
+   *        通过特征数据库来追踪所有的信息.
    * @return FeatureDatabase pointer that one can query for features
+   *        这里指向的FeatureDatabase指的是我们可以用来追踪的所有特征.
    */
   std::shared_ptr<FeatureDatabase> get_feature_database() { return database; }
 
@@ -153,30 +171,38 @@ public:
 
 protected:
   /// Camera object which has all calibration in it
+  /// 包含所有校正信息的相机对象.
   std::unordered_map<size_t, std::shared_ptr<CamBase>> camera_calib;
 
   /// Database with all our current features
+  /// 包含我们当前所有特征的数据库.
   std::shared_ptr<FeatureDatabase> database;
 
   /// If we are a fisheye model or not
+  /// 是否是鱼眼相机.
   std::map<size_t, bool> camera_fisheye;
 
   /// Number of features we should try to track frame to frame
+  /// 用于帧间匹配的特征数目.
   int num_features;
 
   /// If we should use binocular tracking or stereo tracking for multi-camera
+  /// 是否使用双目.
   bool use_stereo;
 
   /// What histogram equalization method we should pre-process images with?
+  /// 用来对图像进行预处理的方法.
   HistogramMethod histogram_method;
 
   /// Mutexs for our last set of image storage (img_last, pts_last, and ids_last)
+
   std::vector<std::mutex> mtx_feeds;
 
   /// Mutex for editing the *_last variables
   std::mutex mtx_last_vars;
 
   /// Last set of images (use map so all trackers render in the same order)
+  /// 最后的图像序列.
   std::map<size_t, cv::Mat> img_last;
 
   /// Last set of images (use map so all trackers render in the same order)
@@ -189,6 +215,7 @@ protected:
   std::unordered_map<size_t, std::vector<size_t>> ids_last;
 
   /// Master ID for this tracker (atomic to allow for multi-threading)
+  /// 这里是用来做多线程的.
   std::atomic<size_t> currid;
 
   // Timing variables (most children use these...)

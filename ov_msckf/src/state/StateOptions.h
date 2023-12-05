@@ -98,7 +98,7 @@ struct StateOptions {
       parser->parse_config("use_fej", do_fej);
       // Integration method
       // IMU的积分方法，这里默认选择是rk4->可以看下如何实现的.
-      std::string integration_str = "rk4";
+      std::string integration_str = "discrete";
       // 选择IMU的积分方法.
       parser->parse_config("integration", integration_str);
       if (integration_str == "discrete") {
@@ -163,7 +163,7 @@ struct StateOptions {
         PRINT_ERROR(RED "please select a valid model: kalibr, rpng\\n" RESET);
         std::exit(EXIT_FAILURE);
       }
-      // 如果已经有标定好的参数，则不要标定IMU相关参数.
+      // 这里如果要求在线估计IMU内参，却又说明IMU已经标好，就会报错.
       if (imu_model_str == "calibrated" && (do_calib_imu_intrinsics || do_calib_imu_g_sensitivity)) {
         PRINT_ERROR(RED "calibrated IMU model selected, but requested calibration!\n" RESET);
         PRINT_ERROR(RED "please select what model you have: kalibr, rpng\n" RESET);

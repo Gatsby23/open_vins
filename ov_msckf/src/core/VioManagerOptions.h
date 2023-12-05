@@ -106,7 +106,7 @@ struct VioManagerOptions {
   /**
    * @brief This function will load print out all estimator settings loaded.
    * This allows for visual checking that everything was loaded properly from ROS/CMD parsers.
-   *
+   *        这个函数是用输出所有读取到的参数，通过这个函数，我们可以看到我们设置的所有参数.
    * @param parser If not null, this parser will be used to load our parameters
    */
   void print_and_load_estimator(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {

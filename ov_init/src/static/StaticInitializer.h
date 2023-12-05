@@ -37,7 +37,7 @@ namespace ov_init {
 
 /**
  * @brief Initializer for a static visual-inertial system.
- *
+ *        用于VIO系统的静态初始化方法.
  * This implementation that assumes that the imu starts from standing still.
  * To initialize from standstill:
  * 1. Collect all inertial measurements
@@ -56,6 +56,7 @@ public:
    * @param db Feature tracker database with all features in it
    * @param imu_data_ Shared pointer to our IMU vector of historical information
    */
+   // 有了explicit关键字，防止隐式类型转换.
   explicit StaticInitializer(InertialInitializerOptions &params_, std::shared_ptr<ov_core::FeatureDatabase> db,
                              std::shared_ptr<std::vector<ov_core::ImuData>> imu_data_)
       : params(params_), _db(db), imu_data(imu_data_) {}
@@ -83,12 +84,15 @@ public:
 
 private:
   /// Initialization parameters
+  /// 初始化参数.
   InertialInitializerOptions params;
 
   /// Feature tracker database with all features in it
+  /// 追踪特征数据库.
   std::shared_ptr<ov_core::FeatureDatabase> _db;
 
   /// Our history of IMU messages (time, angular, linear)
+  /// 历史的IMU信息数据.
   std::shared_ptr<std::vector<ov_core::ImuData>> imu_data;
 };
 

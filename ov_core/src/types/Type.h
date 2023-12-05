@@ -29,7 +29,7 @@ namespace ov_type {
 
 /**
  * @brief Base class for estimated variables.
- *
+ *        待估计状态的基类.
  * This class is used how variables are represented or updated (e.g., vectors or quaternions).
  * Each variable is defined by its error state size and its location in the covariance matrix.
  * We additionally require all sub-types to have a update procedure.

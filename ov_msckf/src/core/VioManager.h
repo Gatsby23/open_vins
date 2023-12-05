@@ -54,34 +54,42 @@ class Propagator;
 
 /**
  * @brief Core class that manages the entire system
- *
+ *        核心类用来管理整个系统.
  * This class contains the state and other algorithms needed for the MSCKF to work.
  * We feed in measurements into this class and send them to their respective algorithms.
  * If we have measurements to propagate or update with, this class will call on our state to do that.
+ *         这个类中包含了MSCKF的核心模块，类似于递推或校正，其他数据输入的时候调用来做这些事.
  */
 class VioManager {
 
 public:
   /**
    * @brief Default constructor, will load all configuration variables
+   *        默认构造函数，用来加载所有的配置文件和变量.
    * @param params_ Parameters loaded from either ROS or CMDLINE
+   *        所有的参数将从ROS或命令行中读取加载.
    */
   VioManager(VioManagerOptions &params_);
 
   /**
    * @brief Feed function for inertial data
+   *        用来输入IMU数据的接口.
    * @param message Contains our timestamp and inertial information
+   *        包含了IMU信息和对应的时间戳.
    */
   void feed_measurement_imu(const ov_core::ImuData &message);
 
   /**
    * @brief Feed function for camera measurements
+   *        用来输入相机数据的接口.
    * @param message Contains our timestamp, images, and camera ids
+   *        包含时间戳、图像和相机ID.
    */
   void feed_measurement_camera(const ov_core::CameraData &message) { track_image_and_update(message); }
 
   /**
    * @brief Feed function for a synchronized simulated cameras
+   *        输入仿真数据的接口.
    * @param timestamp Time that this image was collected
    * @param camids Camera ids that we have simulated measurements for
    * @param feats Raw uv simulated measurements
@@ -208,6 +216,7 @@ protected:
 
   /// This is the queue of measurement times that have come in since we starting doing initialization
   /// After we initialize, we will want to prop & update to the latest timestamp quickly
+  /// 初始化的时候可能会造成部分延迟，但时间戳都会保存下来，等初始化完成后，迅速变到后面的时间戳开始继续递推.
   std::vector<double> camera_queue_init;
   std::mutex camera_queue_init_mtx;
 

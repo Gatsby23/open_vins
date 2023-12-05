@@ -48,6 +48,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   // Get the newest and oldest timestamps we will try to initialize between!
   auto rT1 = boost::posix_time::microsec_clock::local_time();
   double newest_cam_time = -1;
+
   for (auto const &feat : _db->get_internal_data()) {
     for (auto const &camtimepair : feat.second->timestamps) {
       for (auto const &time : camtimepair.second) {
@@ -62,6 +63,8 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
 
   // Remove all measurements that are older than our initialization window
   // Then we will try to use all features that are in the feature database!
+  // 是不是没必要再做一遍？或者说为什么又要再做一遍？
+  // 移除初始化窗口中的所有老特征，然后充分运用特征数据库中的特征.
   _db->cleanup_measurements(oldest_time);
   bool have_old_imu_readings = false;
   auto it_imu = imu_data->begin();
@@ -69,6 +72,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     have_old_imu_readings = true;
     it_imu = imu_data->erase(it_imu);
   }
+  // 如果提取到的特征数量小于预先设置特征数量的0.75，则认为不合适，直接退出.
   if (_db->get_internal_data().size() < 0.75 * params.init_max_features) {
     PRINT_WARNING(RED "[init-d]: only %zu valid features of required (%.0f thresh)!!\n" RESET, _db->get_internal_data().size(),
                   0.95 * params.init_max_features);
@@ -80,9 +84,13 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   }
 
   // Now we will make a copy of our features here
+  // 在这里复制新的特征.
   // We do this to ensure that the feature database can continue to have new
   // measurements appended to it in an async-manor so this initialization
   // can be performed in a secondary thread while feature tracking is still performed.
+  // 这样可以保证特征数据库可以继续以异步方式追加新的测量数据,特征数据库可以继续以异步方式追加新的测量数据.
+  // 这句话的事迹含义没有get到.
+  // 将之前提取的特征提取出来，放到这个数据结构里.
   std::unordered_map<size_t, std::shared_ptr<Feature>> features;
   for (const auto &feat : _db->get_internal_data()) {
     auto feat_new = std::make_shared<Feature>();
@@ -109,9 +117,9 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   std::map<double, bool> map_camera_times;
   map_camera_times[newest_cam_time] = true; // always insert final pose
   std::map<size_t, bool> map_camera_ids;
+  // 每个pose的时间.
   double pose_dt_avg = params.init_window_time / (double)(params.init_dyn_num_pose + 1);
   for (auto const &feat : features) {
-
     // Loop through each timestamp and make sure it is a valid pose
     std::vector<double> times;
     std::map<size_t, bool> camids;
@@ -134,6 +142,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     }
 
     // This isn't a feature we should use if there are not enough measurements
+    // 这里指的是什么呢？
     map_features_num_meas[feat.first] = (int)times.size();
     if (map_features_num_meas[feat.first] < min_num_meas_to_optimize)
       continue;
@@ -170,6 +179,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   Eigen::Vector3d accelerometer_bias = params.init_dyn_bias_a;
 
   // Check that we have some angular velocity / orientation change
+  // 检查这里的角速度和角度的变化.
   double accel_inI_norm = 0.0;
   double theta_inI_norm = 0.0;
   double time0_in_imu = oldest_camera_time + params.calib_camimu_dt;
@@ -186,6 +196,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     accel_inI_norm += am.norm();
   }
   accel_inI_norm /= (double)(readings.size() - 1);
+  // 判断角速度->移动小于...则不会做动态初始化.
   if (180.0 / M_PI * theta_inI_norm < params.init_dyn_min_deg) {
     PRINT_WARNING(YELLOW "[init-d]: gyroscope only %.2f degree change (%.2f thresh)\n" RESET, 180.0 / M_PI * theta_inI_norm,
                   params.init_dyn_min_deg);
@@ -193,39 +204,16 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   }
   PRINT_DEBUG("[init-d]: |theta_I| = %.4f deg and |accel| = %.4f\n", 180.0 / M_PI * theta_inI_norm, accel_inI_norm);
 
-  //  // Create feature bearing vector in the first frame
-  //  // This gives us: p_FinI0 = depth * bearing
-  //  Eigen::Vector4d q_ItoC = data_ori.camera_q_ItoC.at(cam_id);
-  //  Eigen::Vector3d p_IinC = data_init.camera_p_IinC.at(cam_id);
-  //  Eigen::Matrix3d R_ItoC = quat_2_Rot(q_ItoC);
-  //  std::map<size_t, Eigen::Vector3d> features_bearings;
-  //  std::map<size_t, int> features_index;
-  //  for (auto const &feat : features) {
-  //  if (map_features_num_meas[feat.first] < min_num_meas_to_optimize)
-  //    continue;
-  //    assert(feat->timestamps.find(cam_id) != feat->timestamps.end());
-  //    double timestamp = data_ori.timestamps_cam.at(cam_id).at(0);
-  //    auto it0 = std::find(feat->timestamps.at(cam_id).begin(), feat->timestamps.at(cam_id).end(), timestamp);
-  //    if (it0 == feat->timestamps.at(cam_id).end())
-  //      continue;
-  //    auto idx0 = std::distance(feat->timestamps.at(cam_id).begin(), it0);
-  //    Eigen::Vector3d bearing;
-  //    bearing << feat->uvs_norm.at(cam_id).at(idx0)(0), feat->uvs_norm.at(cam_id).at(idx0)(1), 1;
-  //    bearing = bearing / bearing.norm();
-  //    bearing = R_ItoC.transpose() * bearing;
-  //    features_bearings.insert({feat->featid, bearing});
-  //    features_index.insert({feat->featid, (int)features_index.size()});
-  //  }
   auto rT2 = boost::posix_time::microsec_clock::local_time();
 
   // ======================================================
   // ======================================================
-
-  // We will recover position of feature, velocity, gravity
+  // We will recover position of feature, velocity, gravity ->
   // Based on Equation (14) in the following paper:
   // https://ieeexplore.ieee.org/abstract/document/6386235
   // State ordering is: [features, velocity, gravity]
   // Feature size of 1 will use the first ever bearing of the feature as true (depth only..)
+  // 这里是恢复出特征点的位置，速度和重力项.
   const bool use_single_depth = false;
   int size_feature = (use_single_depth) ? 1 : 3;
   int num_features = count_valid_features;
@@ -240,6 +228,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
   // Now lets pre-integrate from the first time to the last
   assert(oldest_camera_time < newest_cam_time);
   double last_camera_timestamp = 0.0;
+  // 预积分模块->为什么要两个与积分模块？
   std::map<double, std::shared_ptr<ov_core::CpiV1>> map_camera_cpi_I0toIi, map_camera_cpi_IitoIi1;
   for (auto const &timepair : map_camera_times) {
 
@@ -255,8 +244,11 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     // Perform our preintegration from I0 to Ii (used in the linear system)
     double cpiI0toIi1_time0_in_imu = oldest_camera_time + params.calib_camimu_dt;
     double cpiI0toIi1_time1_in_imu = current_time + params.calib_camimu_dt;
+    // 设置预积分模块？
     auto cpiI0toIi1 = std::make_shared<ov_core::CpiV1>(params.sigma_w, params.sigma_wb, params.sigma_a, params.sigma_ab, true);
+    // 设置线性化点.
     cpiI0toIi1->setLinearizationPoints(gyroscope_bias, accelerometer_bias);
+    // IMU读数？
     std::vector<ov_core::ImuData> cpiI0toIi1_readings =
         InitializerHelper::select_imu_readings(*imu_data, cpiI0toIi1_time0_in_imu, cpiI0toIi1_time1_in_imu);
     if (cpiI0toIi1_readings.size() < 2) {
@@ -277,6 +269,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     }
 
     // Perform our preintegration from Ii to Ii1 (used in the mle optimization)
+    // 采用Ii到Ii1的优化？
     double cpiIitoIi1_time0_in_imu = last_camera_timestamp + params.calib_camimu_dt;
     double cpiIitoIi1_time1_in_imu = current_time + params.calib_camimu_dt;
     auto cpiIitoIi1 = std::make_shared<ov_core::CpiV1>(params.sigma_w, params.sigma_wb, params.sigma_a, params.sigma_ab, true);
@@ -324,7 +317,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
     }
     for (auto const &camtime : feat.second->timestamps) {
 
-      // This camera
+      // 对于这个特征点提取时间对应的相机id.
       size_t cam_id = camtime.first;
       Eigen::Vector4d q_ItoC = params.camera_extrinsics.at(cam_id).block(0, 0, 4, 1);
       Eigen::Vector3d p_IinC = params.camera_extrinsics.at(cam_id).block(4, 0, 3, 1);
@@ -571,6 +564,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
 
   // Ceres problem stuff
   // NOTE: By default the problem takes ownership of the memory
+  // 可以看下优化过程中的方差问题.
   ceres::Problem problem;
 
   // Our system states (map from time to index)

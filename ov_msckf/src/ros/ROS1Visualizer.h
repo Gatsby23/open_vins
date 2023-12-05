@@ -74,22 +74,25 @@ class Simulator;
 class ROS1Visualizer {
 
 public:
-  /**
+  /*******************************************
    * @brief Default constructor
+   *        默认构造函数.
    * @param nh ROS node handler
    * @param app Core estimator manager
    * @param sim Simulator if we are simulating
-   */
+   *******************************************/
   ROS1Visualizer(std::shared_ptr<ros::NodeHandle> nh, std::shared_ptr<VioManager> app, std::shared_ptr<Simulator> sim = nullptr);
 
-  /**
+  /**************************************************
    * @brief Will setup ROS subscribers and callbacks
+   *        设置ROS的订阅函数.
    * @param parser Configuration file parser
-   */
+   *************************************************/
   void setup_subscribers(std::shared_ptr<ov_core::YamlParser> parser);
 
   /**
    * @brief Will visualize the system if we have new things
+   *        可视化参数.
    */
   void visualize();
 
@@ -97,46 +100,58 @@ public:
    * @brief Will publish our odometry message for the current timestep.
    * This will take the current state estimate and get the propagated pose to the desired time.
    * This can be used to get pose estimates on systems which require high frequency pose estimates.
+   * 可视化里程计
    */
   void visualize_odometry(double timestamp);
 
   /**
    * @brief After the run has ended, print results
+   *        如果这里运行结束，我们将打印出来整体情况.
    */
   void visualize_final();
 
   /// Callback for inertial information
+  /// 接收IMU的信息.
   void callback_inertial(const sensor_msgs::Imu::ConstPtr &msg);
 
   /// Callback for monocular cameras information
+  /// 接收单目的图像信息.
   void callback_monocular(const sensor_msgs::ImageConstPtr &msg0, int cam_id0);
 
   /// Callback for synchronized stereo camera information
+  /// 接收已同步的双目信息.
   void callback_stereo(const sensor_msgs::ImageConstPtr &msg0, const sensor_msgs::ImageConstPtr &msg1, int cam_id0, int cam_id1);
 
 protected:
   /// Publish the current state
+  /// 发布出当前的状态.
   void publish_state();
 
   /// Publish the active tracking image
+  /// 发布出当前正在追踪的图像.
   void publish_images();
 
   /// Publish current features
+  /// 发布出当前的特征.
   void publish_features();
 
   /// Publish groundtruth (if we have it)
+  /// 发布出真值结果.
   void publish_groundtruth();
 
   /// Publish loop-closure information of current pose and active track information
+  /// 发布出闭环检测信息.
   void publish_loopclosure_information();
 
   /// Global node handler
   std::shared_ptr<ros::NodeHandle> _nh;
 
   /// Core application of the filter system
+  /// 核心系统功能.
   std::shared_ptr<VioManager> _app;
 
   /// Simulator (is nullptr if we are not sim'ing)
+  /// 用于做仿真的地方.
   std::shared_ptr<Simulator> _sim;
 
   // Our publishers
@@ -170,6 +185,7 @@ protected:
   boost::posix_time::ptime rT1, rT2;
 
   // Thread atomics
+  // 原子操作->这个不知道怎么用.
   std::atomic<bool> thread_update_running;
 
   /// Queue up camera measurements sorted by time and trigger once we have

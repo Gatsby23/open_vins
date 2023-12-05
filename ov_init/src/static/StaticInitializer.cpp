@@ -53,6 +53,7 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
   }
 
   // First lets collect a window of IMU readings from the newest measurement to the oldest
+  // 第一步：收集出IMU数据窗口.
   std::vector<ImuData> window_1to0, window_2to1;
   for (const ImuData &data : *imu_data) {
     if (data.timestamp > newesttime - 0.5 * params.init_window_time && data.timestamp <= newesttime - 0.0 * params.init_window_time) {
@@ -70,6 +71,7 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
   }
 
   // Calculate the sample variance for the newest window from 1 to 0
+  // 计算采样的方差.
   Eigen::Vector3d a_avg_1to0 = Eigen::Vector3d::Zero();
   for (const ImuData &data : window_1to0) {
     a_avg_1to0 += data.am;
@@ -98,6 +100,7 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
   PRINT_DEBUG(YELLOW "[init-s]: IMU excitation stats: %.3f,%.3f\n" RESET, a_var_2to1, a_var_1to0);
 
   // If it is below the threshold and we want to wait till we detect a jerk
+  // 如果低于阈值，则一直等到有冲动再初始化.
   if (a_var_1to0 < params.init_imu_thresh && wait_for_jerk) {
     PRINT_INFO(YELLOW "[init-s]: no IMU excitation, below threshold %.3f < %.3f\n" RESET, a_var_1to0, params.init_imu_thresh);
     return false;

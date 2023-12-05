@@ -103,14 +103,16 @@ bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
     // Try to initialize the system
     // We will wait for a jerk if we do not have the zero velocity update enabled
     // Otherwise we can initialize right away as the zero velocity will handle the stationary case
+    // 这里能懂意思了->如果有零速修正，则直接基于零速下的初始化。如果没有的话，则等一个jerk来初始化IMU.
     bool wait_for_jerk = (updaterZUPT == nullptr);
+    // 这里是初始化，初始化完成后的协方差等都往后传递.
     bool success = initializer->initialize(timestamp, covariance, order, state->_imu, wait_for_jerk);
 
     // If we have initialized successfully we will set the covariance and state elements as needed
     // TODO: set the clones and SLAM features here so we can start updating right away...
     if (success) {
-
       // Set our covariance (state should already be set in the initializer)
+      // 将初始化后的协方差进行设置.
       StateHelper::set_initial_covariance(state, covariance, order);
 
       // Set the state time
@@ -120,6 +122,7 @@ bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
       // Cleanup any features older than the initialization time
       // Also increase the number of features to the desired amount during estimation
       // NOTE: we will split the total number of features over all cameras uniformly
+      // 这里不知道是要做什么.
       trackFEATS->get_feature_database()->cleanup_measurements(state->_timestamp);
       trackFEATS->set_num_features(std::floor((double)params.num_pts / (double)params.state_options.num_cameras));
       if (trackARUCO != nullptr) {
@@ -166,6 +169,7 @@ bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
       camera_queue_init.clear();
 
     } else {
+        // 如果不成功，则返回，即将继续重新初始化.
       auto init_rT2 = boost::posix_time::microsec_clock::local_time();
       PRINT_DEBUG(YELLOW "[init]: failed initialization in %.4f seconds\n" RESET, (init_rT2 - init_rT1).total_microseconds() * 1e-6);
       thread_init_success = false;
@@ -179,6 +183,7 @@ bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
 
   // If we are single threaded, then run single threaded
   // Otherwise detach this thread so it runs in the background!
+  /// 这两个实际上不太懂，有什么区别.
   if (!params.use_multi_threading_subs) {
     thread.join();
   } else {
