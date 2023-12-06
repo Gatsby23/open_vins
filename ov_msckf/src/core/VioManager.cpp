@@ -48,12 +48,10 @@ using namespace ov_type;
 using namespace ov_msckf;
 
 VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false), thread_init_success(false) {
-
   // Nice startup message
   PRINT_DEBUG("=======================================\n");
   PRINT_DEBUG("OPENVINS ON-MANIFOLD EKF IS STARTING\n");
   PRINT_DEBUG("=======================================\n");
-
   // Nice debug
   // 感觉没必要再输出一遍.
   this->params = params_;
@@ -61,7 +59,6 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   params.print_and_load_noise();
   params.print_and_load_state();
   params.print_and_load_trackers();
-
   // This will globally set the thread count we will use
   // -1 will reset to the system default threading (usually the num of cores)
   // 设置opencv全局使用时的线程数，如果设置-1的话，则由系统自己设定（由系统核数来定）
