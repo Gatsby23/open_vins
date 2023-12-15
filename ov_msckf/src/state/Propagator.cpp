@@ -63,6 +63,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
   double time0 = state->_timestamp + last_prop_time_offset;
   double time1 = timestamp + t_off_new;
   std::vector<ov_core::ImuData> prop_data;
+  // 筛选这两个时间戳中的数据，用来做递推.
   {
     std::lock_guard<std::mutex> lck(imu_data_mtx);
     prop_data = Propagator::select_imu_readings(imu_data, time0, time1);
@@ -84,6 +85,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
 
       // Get the next state Jacobian and noise Jacobian for this IMU reading
       Eigen::MatrixXd F, Qdi;
+      // 来求出每一部分的F和对应的Qdi.
       predict_and_compute(state, prop_data.at(i), prop_data.at(i + 1), F, Qdi);
 
       // Next we should propagate our IMU covariance
@@ -98,6 +100,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
       dt_summed += prop_data.at(i + 1).timestamp - prop_data.at(i).timestamp;
     }
   }
+  // 这里的判断着实没有想到，为什么这里还需要判断是否大于或小于呢？
   assert(std::abs((time1 - time0) - dt_summed) < 1e-4);
 
   // Last angular velocity (used for cloning when estimating time offset)
@@ -127,6 +130,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
       Phi_order.push_back(state->_calib_imu_ACCtoIMU);
     }
   }
+  // 这里Propagate方差.
   StateHelper::EKFPropagation(state, Phi_order, Phi_order, Phi_summed, Qd_summed);
 
   // Set timestamp data
@@ -134,6 +138,7 @@ void Propagator::propagate_and_clone(std::shared_ptr<State> state, double timest
   last_prop_time_offset = t_off_new;
 
   // Now perform stochastic cloning
+  // 现在进行状态克隆.
   StateHelper::augment_clone(state, last_w);
 }
 
@@ -281,8 +286,8 @@ std::vector<ov_core::ImuData> Propagator::select_imu_readings(const std::vector<
 
   // Loop through and find all the needed measurements to propagate with
   // Note we split measurements based on the given state time, and the update timestamp
+  // 注意这里有是插值出来的数据，不知道啥意思.
   for (size_t i = 0; i < imu_data.size() - 1; i++) {
-
     // START OF THE INTEGRATION PERIOD
     // If the next timestamp is greater then our current state time
     // And the current is not greater then it yet...
@@ -396,17 +401,24 @@ void Propagator::predict_and_compute(std::shared_ptr<State> state, const ov_core
                                      Eigen::MatrixXd &F, Eigen::MatrixXd &Qd) {
 
   // Time elapsed over interval
+  // 两帧IMU之间的时间间隔.
   double dt = data_plus.timestamp - data_minus.timestamp;
   // assert(data_plus.timestamp>data_minus.timestamp);
 
   // IMU intrinsic calibration estimates (static)
+  // IMU的内参.
+  // DW->将陀螺仪读数转换到IMU坐标系下.
+  // Da->将加速度读数转换到IMU坐标系下.
+  // Tg->正交耦合，加速度计读数对陀螺仪的影响.
   Eigen::Matrix3d Dw = State::Dm(state->_options.imu_model, state->_calib_imu_dw->value());
   Eigen::Matrix3d Da = State::Dm(state->_options.imu_model, state->_calib_imu_da->value());
   Eigen::Matrix3d Tg = State::Tg(state->_calib_imu_tg->value());
 
   // Corrected imu acc measurements with our current biases
+  // 用我们当前的加速度测量来估计出当前的加速度.
   Eigen::Vector3d a_hat1 = data_minus.am - state->_imu->bias_a();
   Eigen::Vector3d a_hat2 = data_plus.am - state->_imu->bias_a();
+  // 中值积分.
   Eigen::Vector3d a_hat_avg = .5 * (a_hat1 + a_hat2);
 
   // Convert "raw" imu to its corrected frame using the IMU intrinsics
@@ -429,6 +441,7 @@ void Propagator::predict_and_compute(std::shared_ptr<State> state, const ov_core
   w_hat_avg = R_GYROtoIMU * Dw * w_hat_avg;
 
   // Pre-compute some analytical values for the mean and covariance integration
+  // 这里指的是不是rk4的covariance的解析式，现在并没有完全递推出来？
   Eigen::Matrix<double, 3, 18> Xi_sum = Eigen::Matrix<double, 3, 18>::Zero(3, 18);
   if (state->_options.integration_method == StateOptions::IntegrationMethod::RK4 ||
       state->_options.integration_method == StateOptions::IntegrationMethod::ANALYTICAL) {

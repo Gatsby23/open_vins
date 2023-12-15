@@ -64,7 +64,6 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   // 设置opencv全局使用时的线程数，如果设置-1的话，则由系统自己设定（由系统核数来定）
   cv::setNumThreads(params.num_opencv_threads);
   cv::setRNGSeed(0);
-
   // Create the state!!
   state = std::make_shared<State>(params.state_options);
 
@@ -179,7 +178,6 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
 }
 
 void VioManager::feed_measurement_imu(const ov_core::ImuData &message) {
-
   // The oldest time we need IMU with is the last clone
   // We shouldn't really need the whole window, but if we go backwards in time we will
   double oldest_time = state->margtimestep();
@@ -190,7 +188,7 @@ void VioManager::feed_measurement_imu(const ov_core::ImuData &message) {
   if (!is_initialized_vio) {
     oldest_time = message.timestamp - params.init_options.init_window_time + state->_calib_dt_CAMtoIMU->value()(0) - 0.10;
   }
-  // 递推.
+  // 注意，这里只是往IMU递推器中塞IMU数据，但并没有进行递推？
   propagator->feed_imu(message, oldest_time);
 
   // Push back to our initializer
@@ -271,11 +269,10 @@ void VioManager::feed_measurement_simulation(double timestamp, const std::vector
   do_feature_propagate_update(message);
 }
 
+// 这里就是直接feed camera，然后把之前存储的IMU信息进行Propagate，相机消息进行Update.
 void VioManager::track_image_and_update(const ov_core::CameraData &message_const) {
-
   // Start timing
   rT1 = boost::posix_time::microsec_clock::local_time();
-
   // Assert we have valid measurement data and ids
   assert(!message_const.sensor_ids.empty());
   assert(message_const.sensor_ids.size() == message_const.images.size());
@@ -284,6 +281,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   }
 
   // Downsample if we are downsampling
+  // 如果就进行降采样.
   ov_core::CameraData message = message_const;
   for (size_t i = 0; i < message.sensor_ids.size() && params.downsample_cameras; i++) {
     cv::Mat img = message.images.at(i);
@@ -296,7 +294,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   }
 
   // Perform our feature tracking!
-  // 注意到这里无论有没有初始化，都对特征进行了追踪.
+  // 这里进行特征提取和跟踪.
   trackFEATS->feed_new_camera(message);
 
   // If the aruco tracker is available, the also pass to it
@@ -319,6 +317,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
       assert(state->_timestamp == message.timestamp);
       propagator->clean_old_imu_measurements(message.timestamp + state->_calib_dt_CAMtoIMU->value()(0) - 0.10);
       updaterZUPT->clean_old_imu_measurements(message.timestamp + state->_calib_dt_CAMtoIMU->value()(0) - 0.10);
+      // 这里这个invalidate cache不知道有什么用.
       propagator->invalidate_cache();
       return;
     }
@@ -327,7 +326,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   // If we do not have VIO initialization, then try to initialize
   // TODO: Or if we are trying to reset the system, then do that here!
   if (!is_initialized_vio) {
-    // 尝试初始化.
+    // 这里用之前累计的数据开始初始化.
     is_initialized_vio = try_to_initialize(message);
     if (!is_initialized_vio) {
       double time_track = (rT2 - rT1).total_microseconds() * 1e-6;
@@ -337,6 +336,7 @@ void VioManager::track_image_and_update(const ov_core::CameraData &message_const
   }
 
   // Call on our propagate and update function
+  // 开始进行递推和更新.
   do_feature_propagate_update(message);
 }
 

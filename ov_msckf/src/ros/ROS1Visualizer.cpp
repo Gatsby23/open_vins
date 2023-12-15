@@ -435,7 +435,7 @@ void ROS1Visualizer::visualize_final() {
   rT2 = boost::posix_time::microsec_clock::local_time();
   PRINT_INFO(REDPURPLE "TIME: %.3f seconds\n\n" RESET, (rT2 - rT1).total_microseconds() * 1e-6);
 }
-
+// 接收IMU消息的时候，开始递推，递推完成后，看有没有camera消息，如果有camera消息的话，就进行更新递推.
 void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
 
   // convert into correct format
@@ -446,13 +446,15 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   message.am << msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z;
 
   // send it to our VIO system
-
+  // 注意，这里就是将消息数据发送到系统中，存储下来，并没有做propagate进行处理.
+  // propagate是在后面的propagate_and_clone里进行递推.
   _app->feed_measurement_imu(message);
   visualize_odometry(message.timestamp);
 
   // If the processing queue is currently active / running just return so we can keep getting measurements
   // Otherwise create a second thread to do our update in an async manor
   // The visualization of the state, images, and features will be synchronous with the update!
+  // 如果这里已经在更新了，则返回等待下一次更新，如果之前更新任务已经完成了，就启动更新线程.
   if (thread_update_running) return;
   thread_update_running = true;
   // 这里应该是判断相机数据是否够系统后续执行？
@@ -477,8 +479,9 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
       double timestamp_imu_inC = message.timestamp - _app->get_state()->_calib_dt_CAMtoIMU->value()(0);
       while (!camera_queue.empty() && camera_queue.at(0).timestamp < timestamp_imu_inC) {
         auto rT0_1 = boost::posix_time::microsec_clock::local_time();
+        // 这里只是为了输出落后多少时间来进行更新，并不用于后续更新情况.
         double update_dt = 100.0 * (timestamp_imu_inC - camera_queue.at(0).timestamp);
-        // 这里就输入到VIO系统了.
+        // 这里就输入到VIO系统了. -> 这里就主要就是进行propagator, track and update.
         _app->feed_measurement_camera(camera_queue.at(0));
         // 可视化的情况了.
         visualize();
@@ -502,7 +505,6 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
 }
 
 void ROS1Visualizer::callback_monocular(const sensor_msgs::ImageConstPtr &msg0, int cam_id0) {
-
   // Check if we should drop this image
   double timestamp = msg0->header.stamp.toSec();
   double time_delta = 1.0 / _app->get_params().track_frequency;
