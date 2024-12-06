@@ -34,6 +34,9 @@ namespace ov_core {
  * On newer versions this doesn't seem to be needed, but here we just use it to ensure we can work for more opencv version.
  * https://answers.opencv.org/question/65800/how-to-use-lambda-as-a-parameter-to-parallel_for_/?answer=130691#post-id-130691
  */
+/***********************************
+ * @brief 用于辅助OpenCV并行化的视线.
+ ***********************************/
 class LambdaBody : public cv::ParallelLoopBody {
 public:
   explicit LambdaBody(const std::function<void(const cv::Range &)> &body) { _body = body; }

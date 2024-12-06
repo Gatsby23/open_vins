@@ -34,6 +34,7 @@ namespace ov_type {
  * Internally we use a JPLQuat quaternion representation for the orientation and 3D Vec position.
  * Please see JPLQuat for details on its update procedure and its left multiplicative error.
  */
+ // 这里就是JPL格式下的位姿表示.
 class PoseJPL : public Type {
 
 public:

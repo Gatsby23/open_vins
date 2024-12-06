@@ -78,6 +78,8 @@ struct CameraData {
   }
 };
 
+// 可以增加LiDAR数据在这.
+
 } // namespace ov_core
 
 #endif // OV_CORE_SENSOR_DATA_H

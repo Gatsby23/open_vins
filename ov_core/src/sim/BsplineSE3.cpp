@@ -24,7 +24,6 @@
 using namespace ov_core;
 
 void BsplineSE3::feed_trajectory(std::vector<Eigen::VectorXd> traj_points) {
-
   // Find the average frequency to use as our uniform timesteps
   double sumdt = 0;
   for (size_t i = 0; i < traj_points.size() - 1; i++) {
@@ -36,6 +35,7 @@ void BsplineSE3::feed_trajectory(std::vector<Eigen::VectorXd> traj_points) {
 
   // convert all our trajectory points into SE(3) matrices
   // we are given [timestamp, p_IinG, q_GtoI]
+  /// 注意这里放入的是SE3->可以在后面避免奇异性的问题.
   AlignedEigenMat4d trajectory_points;
   for (size_t i = 0; i < traj_points.size() - 1; i++) {
     Eigen::Matrix4d T_IinG = Eigen::Matrix4d::Identity();
@@ -55,13 +55,14 @@ void BsplineSE3::feed_trajectory(std::vector<Eigen::VectorXd> traj_points) {
       timestamp_max = pose.first;
     }
   }
+
   PRINT_DEBUG("[B-SPLINE]: trajectory start time = %.6f\n", timestamp_min);
   PRINT_DEBUG("[B-SPLINE]: trajectory end time = %.6f\n", timestamp_max);
 
   // then create spline control points
+  // 开始创建控制点.
   double timestamp_curr = timestamp_min;
   while (true) {
-
     // Get bounding posed for the current time
     double t0, t1;
     Eigen::Matrix4d pose0, pose1;
@@ -75,6 +76,7 @@ void BsplineSE3::feed_trajectory(std::vector<Eigen::VectorXd> traj_points) {
       break;
 
     // Linear interpolation and append to our control points
+    // 线性插入.
     double lambda = (timestamp_curr - t0) / (t1 - t0);
     Eigen::Matrix4d pose_interp = exp_se3(lambda * log_se3(pose1 * Inv_se3(pose0))) * pose0;
     control_points.insert({timestamp_curr, pose_interp});
@@ -85,6 +87,7 @@ void BsplineSE3::feed_trajectory(std::vector<Eigen::VectorXd> traj_points) {
   }
 
   // The start time of the system is two dt in since we need at least two older control points
+  // 主要到这里至少需要2个控制点才行.
   timestamp_start = timestamp_min + 2 * dt;
   PRINT_DEBUG("[B-SPLINE]: start trajectory time of %.6f\n", timestamp_start);
 }

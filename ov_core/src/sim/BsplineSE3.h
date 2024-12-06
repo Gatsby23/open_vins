@@ -112,15 +112,17 @@ public:
   /**
    * @brief Will feed in a series of poses that we will then convert into control points.
    *
+   *
    * Our control points need to be uniformly spaced over the trajectory, thus given a trajectory we will
    * uniformly sample based on the average spacing between the pose points specified.
-   *
+   * 给定一系列pose的轨迹，实现在固定轨迹的情况下，依据指定位姿之间的平均距离实现均匀采样.
    * @param traj_points Trajectory poses that we will convert into control points (timestamp(s), q_GtoI, p_IinG)
+   *
    */
   void feed_trajectory(std::vector<Eigen::VectorXd> traj_points);
 
   /**
-   * @brief Gets the orientation and position at a given timestamp
+   * @brief Gets the orientation and position at a given timestamp -> 给定确定时刻下的位姿.
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -129,7 +131,7 @@ public:
   bool get_pose(double timestamp, Eigen::Matrix3d &R_GtoI, Eigen::Vector3d &p_IinG);
 
   /**
-   * @brief Gets the angular and linear velocity at a given timestamp
+   * @brief Gets the angular and linear velocity at a given timestamp->给定确定时刻下的角线速度和线性加速度.
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -140,7 +142,7 @@ public:
   bool get_velocity(double timestamp, Eigen::Matrix3d &R_GtoI, Eigen::Vector3d &p_IinG, Eigen::Vector3d &w_IinI, Eigen::Vector3d &v_IinG);
 
   /**
-   * @brief Gets the angular and linear acceleration at a given timestamp
+   * @brief Gets the angular and linear acceleration at a given timestamp -> 给定确定时刻下的加速度和角速度.
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -154,13 +156,16 @@ public:
                         Eigen::Vector3d &v_IinG, Eigen::Vector3d &alpha_IinI, Eigen::Vector3d &a_IinG);
 
   /// Returns the simulation start time that we should start simulating from
+  /// 返回应该仿真开始的时刻.
   double get_start_time() { return timestamp_start; }
 
 protected:
   /// Uniform sampling time for our control points
+  /// 控制点的均匀采样时间.
   double dt;
 
   /// Start time of the system
+  /// 系统的启动时间.
   double timestamp_start;
 
   /// Type defintion of our aligned eigen4d matrix: https://eigen.tuxfamily.org/dox/group__TopicStlContainers.html
@@ -168,11 +173,12 @@ protected:
       AlignedEigenMat4d;
 
   /// Our control SE3 control poses (R_ItoG, p_IinG)
+  /// 我们控制点的SE3位姿.
   AlignedEigenMat4d control_points;
 
   /**
    * @brief Will find the two bounding poses for a given timestamp.
-   *
+   *        这里找到边界poses.
    * This will loop through the passed map of poses and find two bounding poses.
    * If there are no bounding poses then this will return false.
    *

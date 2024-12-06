@@ -33,6 +33,7 @@ namespace ov_core {
 
 /**
  * @brief Base class for continuous preintegration integrators.
+ * @brief 连续预积分积分器的基类
  *
  * This is the base class that both continuous-time preintegrators extend.
  * Please take a look at the derived classes CpiV1 and CpiV2 for the actual implementation.
@@ -41,10 +42,18 @@ namespace ov_core {
  * > Authors: Kevin Eckenhoff, Patrick Geneva, and Guoquan Huang
  * > http://udel.edu/~ghuang/papers/tr_cpi.pdf
  *
+ * 这是所有连续时间预积分器的基类。实际的实现请查看派生类 CpiV1 和 CpiV2。
+ * 相关论文请看：http://udel.edu/~ghuang/papers/tr_cpi.pdf
+ *
  * The steps to use this preintegration class are as follows:
  * 1. call setLinearizationPoints() to set the bias/orientation linearization point
  * 2. call feed_IMU() will all IMU measurements you want to precompound over
  * 3. access public varibles, to get means, Jacobians, and measurement covariance
+ *
+ * 使用方法如下：
+ * 1. 调用 setLinearizationPoints() 设置偏差/方向线性化点
+ * 2. 调用 feed_IMU() 输入所有希望预积累的IMU测量数据
+ * 3. 访问公共变量，获取均值、雅可比矩阵和测量协方差
  */
 class CpiBase {
 
@@ -55,7 +64,7 @@ public:
    * @param sigma_wb gyroscope random walk (rad/s^2/sqrt(hz))
    * @param sigma_a accelerometer white noise density (m/s^2/sqrt(hz))
    * @param sigma_ab accelerometer random walk (m/s^3/sqrt(hz))
-   * @param imu_avg_ if we want to average the imu measurements (IJRR paper did not do this)
+   * @param imu_avg_ if we want to average the imu measurements (IJRR paper did not do this) -> IJRR的文章没有做这个.
    */
   CpiBase(double sigma_w, double sigma_wb, double sigma_a, double sigma_ab, bool imu_avg_ = false) {
     // Calculate our covariance matrix

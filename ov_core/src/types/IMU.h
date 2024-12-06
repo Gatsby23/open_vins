@@ -34,6 +34,7 @@ namespace ov_type {
  * This should be similar to that of the standard MSCKF state besides the ordering.
  * The pose is first, followed by velocity, etc.
  */
+ // 这里需要注意的是JPL方式表示.
 class IMU : public Type {
 
 public:

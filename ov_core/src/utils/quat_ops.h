@@ -61,6 +61,9 @@
  * @f]
  *
  */
+/**************************************
+ * @brief 这里主要是基于JPL的四元数表示方法.
+ *************************************/
 
 #include <Eigen/Eigen>
 
@@ -85,6 +88,7 @@ namespace ov_core {
  * @param[in] rot 3x3 rotation matrix
  * @return 4x1 quaternion
  */
+ // 得看下为什么要选择矩阵对角元素的最大值？
 inline Eigen::Matrix<double, 4, 1> rot_2_quat(const Eigen::Matrix<double, 3, 3> &rot) {
   Eigen::Matrix<double, 4, 1> q;
   double T = rot.trace();
@@ -94,7 +98,6 @@ inline Eigen::Matrix<double, 4, 1> rot_2_quat(const Eigen::Matrix<double, 3, 3> 
     q(1) = (1 / (4 * q(0))) * (rot(0, 1) + rot(1, 0));
     q(2) = (1 / (4 * q(0))) * (rot(0, 2) + rot(2, 0));
     q(3) = (1 / (4 * q(0))) * (rot(1, 2) - rot(2, 1));
-
   } else if ((rot(1, 1) >= T) && (rot(1, 1) >= rot(0, 0)) && (rot(1, 1) >= rot(2, 2))) {
     q(1) = sqrt((1 + (2 * rot(1, 1)) - T) / 4);
     q(0) = (1 / (4 * q(1))) * (rot(0, 1) + rot(1, 0));
@@ -229,6 +232,7 @@ inline Eigen::Matrix<double, 3, 1> vee(const Eigen::Matrix<double, 3, 3> &w_x) {
  * @param[in] w 3x1 vector in R(3) we will take the exponential of
  * @return SO(3) rotation matrix
  */
+ // 将vector转换为SO3->这里有没有分别出来顺序问题.
 inline Eigen::Matrix<double, 3, 3> exp_so3(const Eigen::Matrix<double, 3, 1> &w) {
   // get theta
   Eigen::Matrix<double, 3, 3> w_x = skew_x(w);
@@ -513,6 +517,7 @@ inline Eigen::Matrix<double, 4, 1> quatnorm(Eigen::Matrix<double, 4, 1> q_t) {
  * @param w axis-angle
  * @return The left Jacobian of SO(3)
  */
+ // 这里是通过左乘来得到对应的jacobian.
 inline Eigen::Matrix<double, 3, 3> Jl_so3(const Eigen::Matrix<double, 3, 1> &w) {
   double theta = w.norm();
   if (theta < 1e-6) {
@@ -535,6 +540,7 @@ inline Eigen::Matrix<double, 3, 3> Jl_so3(const Eigen::Matrix<double, 3, 1> &w) 
  * @param w axis-angle
  * @return The right Jacobian of SO(3)
  */
+ // 这类就能看出来主要是JPL方式，左乘为主.
 inline Eigen::Matrix<double, 3, 3> Jr_so3(const Eigen::Matrix<double, 3, 1> &w) { return Jl_so3(-w); }
 
 /**

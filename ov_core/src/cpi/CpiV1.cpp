@@ -30,12 +30,22 @@
 
 using namespace ov_core;
 
+/*******************************************
+ *
+ * @param t_0 IMU采集时刻t0.
+ * @param t_1 IMU采集时刻t1.
+ * @param w_m_0 代表的是t0时刻陀螺仪的测量值.
+ * @param a_m_0 代表的是t0时刻加速度计的测量值.
+ * @param w_m_1 代表的是t1时刻陀螺仪的测量值.
+ * @param a_m_1 代表的是t1时刻加速度计的测量值.
+ ******************************************/
 void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, Eigen::Matrix<double, 3, 1> a_m_0,
                      Eigen::Matrix<double, 3, 1> w_m_1, Eigen::Matrix<double, 3, 1> a_m_1) {
 
   // Get time difference
+  // 时间差异.
   double delta_t = t_1 - t_0;
-  DT += delta_t;
+  DT += delta_t; // -> 这个变量似乎在后面都用不到.
 
   // If no time has passed do nothing
   if (delta_t == 0) {
@@ -43,10 +53,12 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
   }
 
   // Get estimated imu readings
+  // 获得估计出的IMU读数（测量值-偏移量）.
   Eigen::Matrix<double, 3, 1> w_hat = w_m_0 - b_w_lin;
   Eigen::Matrix<double, 3, 1> a_hat = a_m_0 - b_a_lin;
 
   // If averaging, average
+  // 如果是平均的话，就将t0时刻和t1时刻进行平均.
   if (imu_avg) {
     w_hat += w_m_1 - b_w_lin;
     w_hat = 0.5 * w_hat;
@@ -55,6 +67,7 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
   }
 
   // Get angle change w*dt
+  // 获得角度的变化量.
   Eigen::Matrix<double, 3, 1> w_hatdt = w_hat * delta_t;
 
   // Get entries of w_hat
@@ -63,13 +76,16 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
   double w_3 = w_hat(2, 0);
 
   // Get magnitude of w and wdt
+  // 获取w和wdt的幅值.
   double mag_w = w_hat.norm();
   double w_dt = mag_w * delta_t;
 
   // Threshold to determine if equations will be unstable
+  // 如果幅值小于这个，则代表是小角度(0.5°).
   bool small_w = (mag_w < 0.008726646);
 
   // Get some of the variables used in the preintegration equations
+  // 用于预积分中的变量（先缓存下来，加速计算）
   double dt_2 = pow(delta_t, 2);
   double cos_wt = cos(w_dt);
   double sin_wt = sin(w_dt);
@@ -84,14 +100,17 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
   //==========================================================================
 
   // Get relative rotation
+  // 需要注意的是，这里实际上就相当于是SO(3) * t->这里是通过Quaternion的方式，我用Sophus，但其底层原理也还是一样的.
   Eigen::Matrix<double, 3, 3> R_tau2tau1 = small_w ? eye3 - delta_t * w_x + (pow(delta_t, 2) / 2) * w_x_2
                                                    : eye3 - (sin_wt / mag_w) * w_x + ((1.0 - cos_wt) / (pow(mag_w, 2.0))) * w_x_2;
 
   // Updated rotation and its transpose
+  // 更新对应的旋转和平移.
   Eigen::Matrix<double, 3, 3> R_k2tau1 = R_tau2tau1 * R_k2tau;
   Eigen::Matrix<double, 3, 3> R_tau12k = R_k2tau1.transpose();
 
   // Intermediate variables for evaluating the measurement/bias Jacobian update
+  // 用于计算测量/偏置雅可比更新的中间变量.
   double f_1;
   double f_2;
   double f_3;
@@ -231,6 +250,7 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
   // k1-------------------------------------------------------------------------------------------------
 
   // Build state Jacobian
+  // 这里是需要注意的->这里并不是一次计算Covariance（相比之下，雷达那里直接F感觉有点草率了）.
   Eigen::Matrix<double, 15, 15> F_k1 = Eigen::Matrix<double, 15, 15>::Zero();
   F_k1.block(0, 0, 3, 3) = -w_x;
   F_k1.block(0, 3, 3, 3) = -eye3;
@@ -310,6 +330,7 @@ void CpiV1::feed_IMU(double t_0, double t_1, Eigen::Matrix<double, 3, 1> w_m_0, 
 
   // Update rotation mean
   // Note we had to wait to do this, since we use the old orientation in our covariance calculation
+  // 得到最后旋转的更新，一开始是去除掉初始状态所带来的影响.
   R_k2tau = R_k2tau1;
   q_k2tau = rot_2_quat(R_k2tau);
 }

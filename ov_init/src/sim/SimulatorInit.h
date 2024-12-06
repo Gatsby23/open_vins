@@ -84,22 +84,22 @@ public:
    */
   bool get_state(double desired_time, Eigen::Matrix<double, 17, 1> &imustate);
 
-  /**
-   * @brief Gets the next inertial reading if we have one.
-   * @param time_imu Time that this measurement occured at
-   * @param wm Angular velocity measurement in the inertial frame
-   * @param am Linear velocity in the inertial frame
-   * @return True if we have a measurement
-   */
+  /****************************************
+   * @brief 获取下一组惯性测量数据（若存在）.
+   * @param time_imu 此测量发生的时间戳.
+   * @param wm 惯性系中的角速度测量值.
+   * @param am 惯性系中的线速度测量值.
+   * @return 如果存在测量数据，返回 True.
+   ****************************************/
   bool get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::Vector3d &am);
 
-  /**
-   * @brief Gets the next inertial reading if we have one.
-   * @param time_cam Time that this measurement occured at
-   * @param camids Camera ids that the corresponding vectors match
-   * @param feats Noisy uv measurements and ids for the returned time
-   * @return True if we have a measurement
-   */
+   /**********************************************
+    * @brief 获取下一组视觉测量数据（若存在）。
+    * @param time_cam 此次测量发生的时间戳。
+    * @param camids 与对应向量匹配的相机ID集合。
+    * @param feats 包含噪声的UV测量值及其对应的ID集合，返回该时间点的数据。
+    * @return 如果存在测量数据，返回 `True`。
+    ***********************************************************************/
   bool get_next_cam(double &time_cam, std::vector<int> &camids, std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> &feats);
 
   /// Returns the true 3d map of features

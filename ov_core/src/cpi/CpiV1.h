@@ -42,12 +42,14 @@ namespace ov_core {
  * Please see the following publication for details on the theory @cite Eckenhoff2019IJRR :
  * > Continuous Preintegration Theory for Graph-based Visual-Inertial Navigation
  * > Authors: Kevin Eckenhoff, Patrick Geneva, and Guoquan Huang
+ * // 感觉就是RK4来做预积分.
  * > http://udel.edu/~ghuang/papers/tr_cpi.pdf
  *
  * The steps to use this preintegration class are as follows:
  * 1. call setLinearizationPoints() to set the bias/orientation linearization point
  * 2. call feed_IMU() will all IMU measurements you want to precompound over
  * 3. access public varibles, to get means, Jacobians, and measurement covariance
+ *
  */
 class CpiV1 : public CpiBase {
 

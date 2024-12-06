@@ -289,6 +289,7 @@ bool SimulatorInit::get_state(double desired_time, Eigen::Matrix<double, 17, 1> 
 bool SimulatorInit::get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::Vector3d &am) {
 
   // Return if the camera measurement should go before us
+
   if (timestamp_last_cam + 1.0 / params.sim_freq_cam < timestamp_last_imu + 1.0 / params.sim_freq_imu)
     return false;
 
@@ -305,6 +306,7 @@ bool SimulatorInit::get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::V
   // NOTE: we get the acceleration between our two IMU
   // NOTE: this is because we are using a constant measurement model for integration
   // bool success_accel = spline->get_acceleration(timestamp+0.5/freq_imu, R_GtoI, p_IinG, w_IinI, v_IinG, alpha_IinI, a_IinG);
+  // 这里是通过样条的方法仿真出来IMU的读数.
   bool success_accel = spline->get_acceleration(timestamp, R_GtoI, p_IinG, w_IinI, v_IinG, alpha_IinI, a_IinG);
 
   // If failed, then that means we don't have any more spline
@@ -315,12 +317,14 @@ bool SimulatorInit::get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::V
   }
 
   // Transform omega and linear acceleration into imu frame
+  // 将加速度和角速度转换到IMU坐标系下.
   Eigen::Vector3d omega_inI = w_IinI;
   Eigen::Vector3d gravity;
   gravity << 0.0, 0.0, params.gravity_mag;
   Eigen::Vector3d accel_inI = R_GtoI * (a_IinG + gravity);
 
   // Now add noise to these measurements
+  // 给这些测量增加噪声.
   double dt = 1.0 / params.sim_freq_imu;
   std::normal_distribution<double> w(0, 1);
   wm(0) = omega_inI(0) + true_bias_gyro(0) + params.sigma_w / std::sqrt(dt) * w(gen_meas_imu);
@@ -331,6 +335,7 @@ bool SimulatorInit::get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::V
   am(2) = accel_inI(2) + true_bias_accel(2) + params.sigma_a / std::sqrt(dt) * w(gen_meas_imu);
 
   // Move the biases forward in time
+  // 将偏移随着时间去进行推移.
   true_bias_gyro(0) += params.sigma_wb * std::sqrt(dt) * w(gen_meas_imu);
   true_bias_gyro(1) += params.sigma_wb * std::sqrt(dt) * w(gen_meas_imu);
   true_bias_gyro(2) += params.sigma_wb * std::sqrt(dt) * w(gen_meas_imu);
@@ -339,6 +344,7 @@ bool SimulatorInit::get_next_imu(double &time_imu, Eigen::Vector3d &wm, Eigen::V
   true_bias_accel(2) += params.sigma_ab * std::sqrt(dt) * w(gen_meas_imu);
 
   // Append the current true bias to our history
+  // 把真实的测量（答案）存储起来，用于后面的判断.
   hist_true_bias_time.push_back(timestamp_last_imu);
   hist_true_bias_gyro.push_back(true_bias_gyro);
   hist_true_bias_accel.push_back(true_bias_accel);
@@ -351,56 +357,59 @@ bool SimulatorInit::get_next_cam(double &time_cam, std::vector<int> &camids,
                                  std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> &feats) {
 
   // Return if the imu measurement should go before us
+  // 判断出来当前应该是仿真IMU还是仿真相机观测到的视觉特征.
   if (timestamp_last_imu + 1.0 / params.sim_freq_imu < timestamp_last_cam + 1.0 / params.sim_freq_cam)
     return false;
 
   // Else lets do a new measurement!!!
   timestamp_last_cam += 1.0 / params.sim_freq_cam;
   timestamp = timestamp_last_cam;
+  // 这里还有个标定相关的dt需要处理.
   time_cam = timestamp_last_cam - params.calib_camimu_dt;
 
   // Get the pose at the current timestep
+  // 通过bspline算法获取到当前时间戳下对应的pose.
   Eigen::Matrix3d R_GtoI;
   Eigen::Vector3d p_IinG;
   bool success_pose = spline->get_pose(timestamp, R_GtoI, p_IinG);
 
   // We have finished generating measurements
+  // 我们是否生成完对应的观测.
   if (!success_pose) {
     is_running = false;
     return false;
   }
 
-  // Loop through each camera
+  // 对于每个相机进行循环仿真.
   for (int i = 0; i < params.num_cameras; i++) {
 
-    // Get the uv features for this frame
+    // 获取该视觉帧下对应的uv特征.
     std::vector<std::pair<size_t, Eigen::VectorXf>> uvs = project_pointcloud(R_GtoI, p_IinG, i, featmap);
-
-    // If we do not have enough, generate more
+    // 如果仿真出来的特征数量较少，我们就再一次增加仿真出来的特征.
     if ((int)uvs.size() < params.init_max_features) {
-      PRINT_WARNING(YELLOW "[SIM]: cam %d was unable to generate enough features (%d < %d projections)\n" RESET, (int)i, (int)uvs.size(),
+      PRINT_WARNING(YELLOW "[SIM]: cam %d was unable to generate enough features (%d < %d projections)\n"
+                    RESET, (int)i, (int)uvs.size(),
                     params.init_max_features);
     }
 
-    // If greater than only select the first set
+    // 如果生成的数量较多，则只保留先前数量的特征.
     if ((int)uvs.size() > params.init_max_features) {
       uvs.erase(uvs.begin() + params.init_max_features, uvs.end());
     }
 
-    // Append the map size so all cameras have unique features in them (but the same map)
-    // Only do this if we are not enforcing stereo constraints between all our cameras
+    // 如果不是双目立体视觉相机，则对uv增加整个地图的size来确保每个特征都有一个唯一对应的id.
     for (size_t f = 0; f < uvs.size() && !params.use_stereo; f++) {
       uvs.at(f).first += i * featmap.size();
     }
 
-    // Loop through and add noise to each uv measurement
+    // 对每个uv观测都添加噪声.
     std::normal_distribution<double> w(0, 1);
     for (size_t j = 0; j < uvs.size(); j++) {
       uvs.at(j).second(0) += params.sigma_pix * w(gen_meas_cams.at(i));
       uvs.at(j).second(1) += params.sigma_pix * w(gen_meas_cams.at(i));
     }
 
-    // Push back for this camera
+    // 对每个相机和特征都进行增加.
     feats.push_back(uvs);
     camids.push_back(i);
   }

@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
     PRINT_ERROR(RED "unable to parse all parameters, please fix\n" RESET);
     std::exit(EXIT_FAILURE);
   }
+  // 初始化仿真.
   SimulatorInit sim(params);
 
   //===================================================================================
@@ -114,6 +115,7 @@ int main(int argc, char **argv) {
   ceres::Problem problem;
 
   // Our system states (map from time to index)
+  // 表明是从时间到索引的映射.
   std::map<double, int> map_states;
   std::vector<double *> ceres_vars_ori;
   std::vector<double *> ceres_vars_pos;
@@ -161,9 +163,10 @@ int main(int argc, char **argv) {
   //===================================================================================
   //===================================================================================
 
-  // Random number generator used to perturb the groundtruth features
+  // Random number generator used to perturb the ground truth features
   // NOTE: It seems that if this too large it can really prevent good optimization
   // NOTE: Values greater 5cm seems to fail, not sure if this is reasonable or not...
+  // 注意：如果扰动过大，会导致优化失败，这里测量出，如果大于5cm，则会失败.
   std::mt19937 gen_state_perturb(params.sim_seed_preturb);
   double feat_noise = 0.05; // meters
 
@@ -176,40 +179,44 @@ int main(int argc, char **argv) {
 
   // Simulate!
   signal(SIGINT, signal_callback_handler);
+  // 先开始进行仿真.
   while (sim.ok()) {
 
     // IMU: get the next simulated IMU measurement if we have it
+    // 获取下一组模拟出来的IMU测量.
     ov_core::ImuData message_imu;
     bool hasimu = sim.get_next_imu(message_imu.timestamp, message_imu.wm, message_imu.am);
+    // 如果仿真成功了，就把IMU读数给保存下来.
     if (hasimu) {
       imu_readings->push_back(message_imu);
     }
 
     // CAM: get the next simulated camera uv measurements if we have them
+    // 相机部分：仿真出来相机应该观测到的UV特征.
     double time_cam;
     std::vector<int> camids;
     std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> feats;
+    // 仿真出来camera ID对应的特征点信息.
     bool hascam = sim.get_next_cam(time_cam, camids, feats);
     if (hascam) {
       if (buffer_timecam != -1) {
-
         // Get our predicted state at the requested camera timestep
         double timestamp_k = buffer_timecam_last;
         double timestamp_k1 = buffer_timecam;
         Eigen::Matrix<double, 16, 1> state_k1;
         std::shared_ptr<ov_core::CpiV1> cpi = nullptr;
         if (map_states.empty()) {
-
           // Add the first ever pose to the problem
-          // TODO: do not initialize from the groundtruth pose
+          // TODO: do not initialize from the ground truth pose
+          // 并不是从第一个GT开始恢复->需要补上相机和IMU之间的时间戳误差.
           double time1 = timestamp_k1 + sim.get_true_parameters().calib_camimu_dt;
+          // 获取正确的IMU时刻下的状态.
           Eigen::Matrix<double, 17, 1> gt_imustate;
+          // 判断是否得到.
           bool success = sim.get_state(time1, gt_imustate);
           assert(success);
           state_k1 = gt_imustate.block(1, 0, 16, 1);
-
         } else {
-
           // Get our previous state timestamp (newest time) and biases to integrate with
           assert(timestamp_k != -1);
           Eigen::Vector4d quat_k;
@@ -227,7 +234,9 @@ int main(int argc, char **argv) {
           gravity << 0.0, 0.0, params.gravity_mag;
 
           // Preintegrate from previous state
+          // 从之前的状态来做预积分.
           // Then append a new state with preintegration factor
+          // 将IMU状态给放到预积分因子里.
           // TODO: estimate the timeoffset? don't use the true?
           double time0 = timestamp_k + sim.get_true_parameters().calib_camimu_dt;
           double time1 = timestamp_k1 + sim.get_true_parameters().calib_camimu_dt;
@@ -240,8 +249,7 @@ int main(int argc, char **argv) {
             cpi->feed_IMU(imu0.timestamp, imu1.timestamp, imu0.wm, imu0.am, imu1.wm, imu1.am);
           }
           assert(timestamp_k1 > timestamp_k);
-
-          // Compute the predicted state
+          // 估计出来状态.
           state_k1.block(0, 0, 4, 1) = ov_core::quat_multiply(cpi->q_k2tau, quat_k);
           state_k1.block(4, 0, 3, 1) =
               pos_k + vel_k * cpi->DT - 0.5 * cpi->grav * std::pow(cpi->DT, 2) + ov_core::quat_2_Rot(quat_k).transpose() * cpi->alpha_tau;
@@ -253,7 +261,7 @@ int main(int argc, char **argv) {
         // ================================================================
         //  ADDING GRAPH STATE / ESTIMATES!
         // ================================================================
-
+        // 往图中添加状态，进行估计，这里因为是Ceres，所以是通过添加指针的方式来进行增加.
         // Load our state variables into our allocated state pointers
         auto *var_ori = new double[4];
         for (int i = 0; i < 4; i++) {
@@ -279,9 +287,7 @@ int main(int argc, char **argv) {
         problem.AddParameterBlock(var_bias_a, 3);
 
         // Fix this first ever pose to constrain the problem
-        // On the Comparison of Gauge Freedom Handling in Optimization-Based Visual-Inertial State Estimation
-        // Zichao Zhang; Guillermo Gallego; Davide Scaramuzza
-        // https://ieeexplore.ieee.org/document/8354808
+        // 第一个位姿固定住，不进行优化->详情见子潮的论文.
         if (map_states.empty()) {
 
           // Construct state and prior
@@ -296,6 +302,7 @@ int main(int argc, char **argv) {
           }
           Eigen::MatrixXd prior_grad = Eigen::MatrixXd::Zero(4, 1);
           Eigen::MatrixXd prior_Info = Eigen::MatrixXd::Identity(4, 4);
+          // 四个维度不可观测，所以这里yaw和position的先验增大，不进行优化.
           prior_Info.block(0, 0, 4, 4) *= 1.0 / std::pow(1e-8, 2); // 4dof unobservable yaw and position
           // prior_Info.block(4, 4, 3, 3) *= 1.0 / std::pow(1e-1, 2); // bias_g prior
           // prior_Info.block(7, 7, 3, 3) *= 1.0 / std::pow(1e-1, 2); // bias_a prior
@@ -314,6 +321,7 @@ int main(int argc, char **argv) {
 
           // Append it to the problem
           auto *factor_prior = new Factor_GenericPrior(x_lin, x_types, prior_Info, prior_grad);
+          // 将他添加到Graph中.
           problem.AddResidualBlock(factor_prior, nullptr, factor_params);
           // problem.SetParameterBlockConstant(var_ori);
           // problem.SetParameterBlockConstant(var_pos);
@@ -333,6 +341,7 @@ int main(int argc, char **argv) {
         // ================================================================
 
         // Append the new IMU factor
+        // 预积分因子加上.
         if (cpi != nullptr) {
           assert(timestamp_k != -1);
           std::vector<double *> factor_params;
@@ -353,6 +362,7 @@ int main(int argc, char **argv) {
 
         // Then, append new feature observations factors seen from this frame (initialize features as needed)
         // We first loop through each camera and for each we append measurements as needed
+        // 接着添加特征的约束，需要初始化特征.
         assert(buffer_camids.size() == buffer_feats.size());
         for (size_t n = 0; n < buffer_camids.size(); n++) {
 
@@ -507,8 +517,7 @@ int main(int argc, char **argv) {
       //  PERFORM ACTUAL OPTIMIZATION!
       // ================================================================
 
-      // We can try to optimize every few frames, but this can cause the IMU to drift
-      // Thus this can't be too large, nor too small to reduce the computation
+      // 我们可以尝试每隔几帧进行优化，但这可能会导致IMU漂移。因此，为了减少计算量，优化间隔不能太大也不能太小。
       if (map_states.size() % 10 == 0 && map_states.size() > min_num_meas_to_optimize) {
 
         // COMPUTE: error before optimization

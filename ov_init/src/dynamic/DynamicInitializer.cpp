@@ -106,6 +106,7 @@ bool DynamicInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarian
 
   // Settings
   const int min_num_meas_to_optimize = (int)params.init_window_time;
+  // 这里最少需要8个特征.
   const int min_valid_features = 8;
 
   // Validation information for features we can use
