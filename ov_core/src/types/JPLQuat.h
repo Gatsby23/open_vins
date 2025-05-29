@@ -89,12 +89,16 @@ namespace ov_type {
  * \f}
  *
  */
+ /*****************************
+  * @brief 基于JPL形式的四元数表示.
+  ****************************/
 class JPLQuat : public Type {
 
 public:
   JPLQuat() : Type(3) {
     Eigen::Vector4d q0 = Eigen::Vector4d::Zero();
     q0(3) = 1.0;
+    // 初始化当前变量为单位阵.
     set_value_internal(q0);
     set_fej_internal(q0);
   }
@@ -171,10 +175,10 @@ protected:
     _R = ov_core::quat_2_Rot(new_value);
   }
 
-  /**
-   * @brief Sets the fej value and recomputes the fej rotation matrix
-   * @param new_value New value for the quaternion estimate
-   */
+/*******************************************************************
+ * @brief 设置 FEJ（First Estimate Jacobian）值，并重新计算对应的旋转矩阵
+ * @param new_value 用于设置FEJ的四元数估计值
+ *******************************************************************/
   void set_fej_internal(const Eigen::MatrixXd &new_value) {
 
     assert(new_value.rows() == 4);

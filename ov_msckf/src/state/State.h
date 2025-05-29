@@ -57,12 +57,12 @@ public:
 
   ~State() {}
 
-  /**
-   * @brief Will return the timestep that we will marginalize next.
-   * As of right now, since we are using a sliding window, this is the oldest clone.
-   * But if you wanted to do a keyframe system, you could selectively marginalize clones.
-   * @return timestep of clone we will marginalize
-   */
+    /**
+     * @brief 返回下一个将被边缘化的时间戳->即最老的时间戳。
+     * 当前实现使用滑动窗口机制，因此这里返回的是最早的克隆状态（oldest clone）。
+     * 但如果采用关键帧系统，也可以选择性地边缘化某些克隆状态。
+     * @return 将被边缘化的克隆状态的时间戳
+     */
   double margtimestep() {
     std::lock_guard<std::mutex> lock(_mutex_state);
     double time = INFINITY;
@@ -74,10 +74,10 @@ public:
     return time;
   }
 
-  /**
-   * @brief Calculates the current max size of the covariance
-   * @return Size of the current covariance matrix
-   */
+   /**
+    * @brief 说明现在协方差矩阵的大小.
+    * @return 返回协方差矩阵的大小。
+    */
   int max_covariance_size() { return (int)_Cov.rows(); }
 
   /**
@@ -101,11 +101,9 @@ public:
   }
 
   /**
-   * @brief Gyroscope gravity sensitivity
-   *
-   * For both kalibr and rpng models, this a 3x3 that is column-wise filled.
-   *
-   * @return 3x3 matrix of current gravity sensitivity
+   * @brief 重力敏感性.
+   * 无论是Kalibr还是RNG的IMU内参模型，该矩阵都是一个按列填充的矩阵.
+   * @return 一个3x3大小的重力敏感性矩阵.
    */
   static Eigen::Matrix3d Tg(const Eigen::MatrixXd &vec) {
     assert(vec.rows() == 9);
@@ -134,34 +132,35 @@ public:
     return sz;
   }
 
-  /// Mutex for locking access to the state
+  /// 控制state访问的锁.
   std::mutex _mutex_state;
 
-  /// Current timestamp (should be the last update time in camera clock frame!)
+  /// 当前时间戳.
   double _timestamp = -1;
 
-  /// Struct containing filter options
+  /// 滤波器的整体配置.
   StateOptions _options;
 
-  /// Pointer to the "active" IMU state (q_GtoI, p_IinG, v_IinG, bg, ba)
+  /// 指向IMU状态的指针.
   std::shared_ptr<ov_type::IMU> _imu;
 
-  /// Map between imaging times and clone poses (q_GtoIi, p_IiinG)
+  /// 成像时间与克隆的IMU状态 ->
+  /// 状态克隆即是把相机那一时刻下的IMU状态给映射出来.
   std::map<double, std::shared_ptr<ov_type::PoseJPL>> _clones_IMU;
 
-  /// Our current set of SLAM features (3d positions)
+  /// 当前SLAM特征的集合.
   std::unordered_map<size_t, std::shared_ptr<ov_type::Landmark>> _features_SLAM;
 
-  /// Time offset base IMU to camera (t_imu = t_cam + t_off)
+  /// IMU和相机之间的时间差[Cam->IMU].
   std::shared_ptr<ov_type::Vec> _calib_dt_CAMtoIMU;
 
-  /// Calibration poses for each camera (R_ItoC, p_IinC)
+  /// IMU->相机的外参.
   std::unordered_map<size_t, std::shared_ptr<ov_type::PoseJPL>> _calib_IMUtoCAM;
 
-  /// Camera intrinsics
+  /// 相机内参.
   std::unordered_map<size_t, std::shared_ptr<ov_type::Vec>> _cam_intrinsics;
 
-  /// Camera intrinsics camera objects
+  /// 基于IMU内参的相机实体.
   std::unordered_map<size_t, std::shared_ptr<ov_core::CamBase>> _cam_intrinsics_cameras;
 
   /// Gyroscope IMU intrinsics (scale imperfection and axis misalignment)
@@ -174,9 +173,11 @@ public:
   std::shared_ptr<ov_type::Vec> _calib_imu_tg;
 
   /// Rotation from gyroscope frame to the "IMU" accelerometer frame (kalibr model)
+  /// 从GYRO->ACC的外参转化(Kalibr模型)
   std::shared_ptr<ov_type::JPLQuat> _calib_imu_GYROtoIMU;
 
   /// Rotation from accelerometer to the "IMU" gyroscope frame frame (rpng model)
+  /// RNG模型，从IMU加速度->IMU陀螺仪的旋转转换.
   std::shared_ptr<ov_type::JPLQuat> _calib_imu_ACCtoIMU;
 
 private:
@@ -186,9 +187,11 @@ private:
   friend class StateHelper;
 
   /// Covariance of all active variables
+  /// 激活变量的协方差.
   Eigen::MatrixXd _Cov;
 
   /// Vector of variables
+  /// 变量的集合.
   std::vector<std::shared_ptr<ov_type::Type>> _variables;
 };
 

@@ -34,64 +34,65 @@ namespace ov_msckf {
  */
 struct StateOptions {
 
-  /// Bool to determine whether or not to do first estimate Jacobians
+  /// 决定后面是否做FEJ.
   bool do_fej = true;
 
-  /// Numerical integration methods
+  /// 数值积分方法.
   enum IntegrationMethod { DISCRETE, RK4, ANALYTICAL };
 
-  /// What type of numerical integration is used during propagation
+  /// 决定用哪种数值积分方法.
   IntegrationMethod integration_method = IntegrationMethod::RK4;
 
-  /// Bool to determine whether or not to calibrate imu-to-camera pose
+  /// 是否优化外参.
   bool do_calib_camera_pose = false;
 
-  /// Bool to determine whether or not to calibrate camera intrinsics
+  /// 是否优化内参.
   bool do_calib_camera_intrinsics = false;
 
-  /// Bool to determine whether or not to calibrate camera to IMU time offset
+  /// 是否做估计传感器之间的时间差.
   bool do_calib_camera_timeoffset = false;
 
-  /// Bool to determine whether or not to calibrate the IMU intrinsics
+  /// 是否标定IMU内参.
   bool do_calib_imu_intrinsics = false;
 
-  /// Bool to determine whether or not to calibrate the Gravity sensitivity
+  /// 是否估计重力灵敏度.
   bool do_calib_imu_g_sensitivity = false;
 
-  /// IMU intrinsic models
+  /// IMU内参模型{KALIBR, RPNG}.
   enum ImuModel { KALIBR, RPNG };
 
-  /// What model our IMU intrinsics are
+  /// 设定IMU的内参模型是.
   ImuModel imu_model = ImuModel::KALIBR;
 
-  /// Max clone size of sliding window
+  /// Sliding window中的状态的最大克隆数.
   int max_clone_size = 11;
 
-  /// Max number of estimated SLAM features
+  /// 最多估计SLAM个数.
   int max_slam_features = 25;
 
-  /// Max number of SLAM features we allow to be included in a single EKF update.
+  /// 一次EKF更新中，最多可用的SLAM feature个数.
   int max_slam_in_update = 1000;
 
-  /// Max number of MSCKF features we will use at a given image timestep.
+  /// 在给定时间戳下，用到的最多MSCKF特征个数.
   int max_msckf_in_update = 1000;
 
   /// Max number of estimated ARUCO features
   int max_aruco_features = 1024;
 
-  /// Number of distinct cameras that we will observe features in
+  /// 系统中用的相机个数.
   int num_cameras = 1;
 
-  /// What representation our features are in (msckf features)
+  /// MSCKF特征用到的表现形式.
   ov_type::LandmarkRepresentation::Representation feat_rep_msckf = ov_type::LandmarkRepresentation::Representation::GLOBAL_3D;
 
-  /// What representation our features are in (slam features)
+  /// SLAM特征用到的特征表现形式.
   ov_type::LandmarkRepresentation::Representation feat_rep_slam = ov_type::LandmarkRepresentation::Representation::GLOBAL_3D;
 
-  /// What representation our features are in (aruco tag features)
+  /// AUROC码用到的特征表现形式.
   ov_type::LandmarkRepresentation::Representation feat_rep_aruco = ov_type::LandmarkRepresentation::Representation::GLOBAL_3D;
 
   /// Nice print function of what parameters we have loaded
+  /// 把我们用到的参数打印出来.
   void print(const std::shared_ptr<ov_core::YamlParser> &parser = nullptr) {
     if (parser != nullptr) {
       // 判断是否用FEJ，FEJ可以保证有更好的一致性.

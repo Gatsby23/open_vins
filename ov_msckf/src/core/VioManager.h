@@ -45,6 +45,7 @@ class InertialInitializer;
 
 namespace ov_msckf {
 
+// 前向声明，在大型工程中很有用，可以加快编译速度.
 class State;
 class StateHelper;
 class UpdaterMSCKF;
@@ -187,54 +188,57 @@ protected:
   /// Manager parameters
   VioManagerOptions params;
 
-  /// Our master state object :D
+  /// Our master state object.
   std::shared_ptr<State> state;
 
-  /// Propagator of our state
+  /// IMU 状态递推器.
   std::shared_ptr<Propagator> propagator;
 
-  /// Our sparse feature tracker (klt or descriptor)
+  /// 稀疏特征点追踪器[KLT或描述子].
   std::shared_ptr<ov_core::TrackBase> trackFEATS;
 
-  /// Our aruoc tracker
+  /// 针对ARUCO码的特征点追踪器.
   std::shared_ptr<ov_core::TrackBase> trackARUCO;
 
-  /// State initializer
+  /// 状态初始化器.
   std::shared_ptr<ov_init::InertialInitializer> initializer;
 
-  /// Boolean if we are initialized or not
+  /// 当前VIO初始化成功或失败的标志位.
   bool is_initialized_vio = false;
 
-  /// Our MSCKF feature updater
+  /// MSCKF中的特征点更新器.
   std::shared_ptr<UpdaterMSCKF> updaterMSCKF;
 
-  /// Our SLAM/ARUCO feature updater
+  /// SLAM特征点更新器.
   std::shared_ptr<UpdaterSLAM> updaterSLAM;
 
-  /// Our zero velocity tracker
+  /// 零速修正追踪器.
   std::shared_ptr<UpdaterZeroVelocity> updaterZUPT;
 
-  /// This is the queue of measurement times that have come in since we starting doing initialization
-  /// After we initialize, we will want to prop & update to the latest timestamp quickly
+  /// 自初始化开始的时间戳记载，记载从初始化开始的心接收的序列.
   /// 初始化的时候可能会造成部分延迟，但时间戳都会保存下来，等初始化完成后，迅速变到后面的时间戳开始继续递推.
   std::vector<double> camera_queue_init;
   std::mutex camera_queue_init_mtx;
 
-  // Timing statistic file and variables
+  /// 统计时间的相关文件.
   std::ofstream of_statistics;
   boost::posix_time::ptime rT1, rT2, rT3, rT4, rT5, rT6, rT7;
 
   // Track how much distance we have traveled
+  /// 追踪我们走了多远.
   double timelastupdate = -1;
   double distance = 0;
 
   // Startup time of the filter
+  /// 滤波器的初始化时刻.
   double startup_time = -1;
 
   // Threads and their atomics
+  /// 初始化线程和他们的原子态.
   std::atomic<bool> thread_init_running, thread_init_success;
 
   // If we did a zero velocity update
+  // 如果我们做了ZUPT.
   bool did_zupt_update = false;
   bool has_moved_since_zupt = false;
 
@@ -243,6 +247,8 @@ protected:
 
   // Re-triangulated features 3d positions seen from the current frame (used in visualization)
   // For each feature we have a linear system A * p_FinG = b we create and increment their costs
+  // 从当前帧重新三角化得到的特征点三维位置（用于可视化）-> 待理解.
+  // 对于每一个特征点，我们都有一个线性系统 A * p_FinG = b，我们将据此构建并累加其代价项 -> 待理解.
   double active_tracks_time = -1;
   std::unordered_map<size_t, Eigen::Vector3d> active_tracks_posinG;
   std::unordered_map<size_t, Eigen::Vector3d> active_tracks_uvd;

@@ -62,13 +62,11 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
   params.print_and_load_state();
   params.print_and_load_trackers();
 
-  // This will globally set the thread count we will use
-  // -1 will reset to the system default threading (usually the num of cores)
   // 设置opencv全局使用时的线程数，如果设置-1的话，则由系统自己设定（由系统核数来定）
   cv::setNumThreads(params.num_opencv_threads);
   cv::setRNGSeed(0);
 
-  // Create the state!!
+  // 初始化全局状态State.
   state = std::make_shared<State>(params.state_options);
 
   // Set the IMU intrinsics

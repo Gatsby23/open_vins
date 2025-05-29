@@ -38,54 +38,51 @@ class Type {
 
 public:
   /**
-   * @brief Default constructor for our Type
-   *
-   * @param size_ degrees of freedom of variable (i.e., the size of the error state)
+   * @brief 自定义类型基类的默认构造函数
+   * @param size_ 代表变量的自由度数量（即误差状态的维度大小）
    */
   Type(int size_) { _size = size_; }
 
   virtual ~Type(){};
 
   /**
-   * @brief Sets id used to track location of variable in the filter covariance
+   * @brief 用于跟踪该变量在滤波器协方差矩阵中的位置。
+   * 注意，最小的 ID 值为 -1，表示该状态未包含在协方差矩阵中。
+   * 若 ID 大于 -1，则表示其在协方差矩阵中的索引位置。
    *
-   * Note that the minimum ID is -1 which says that the state is not in our covariance.
-   * If the ID is larger than -1 then this is the index location in the covariance matrix.
-   *
-   * @param new_id entry in filter covariance corresponding to this variable
+   * @param new_id 对应于该变量在滤波器协方差矩阵中的条目索引
    */
   virtual void set_local_id(int new_id) { _id = new_id; }
 
   /**
-   * @brief Access to variable id (i.e. its location in the covariance)
+   * @brief 获取该变量在协方差矩阵中的位置ID
    */
   int id() { return _id; }
 
   /**
-   * @brief Access to variable size (i.e. its error state size)
+   * @brief 获取当前变量的大小（通常指error state）.
    */
   int size() { return _size; }
 
   /**
-   * @brief Update variable due to perturbation of error state
-   *
-   * @param dx Perturbation used to update the variable through a defined "boxplus" operation
+   * @brief 依据误差对当前状态进行扰动更新.
+   * @param dx 这里的扰动是通过之前预先定义的运算法则来执行.
    */
   virtual void update(const Eigen::VectorXd &dx) = 0;
 
   /**
-   * @brief Access variable's estimate
+   * @brief 获取当前变量的预测值.
    */
   virtual const Eigen::MatrixXd &value() const { return _value; }
 
   /**
-   * @brief Access variable's first-estimate
+   * @brief 获取当前变量的FEJ.
    */
   virtual const Eigen::MatrixXd &fej() const { return _fej; }
 
   /**
-   * @brief Overwrite value of state's estimate
-   * @param new_value New value that will overwrite state's value
+   * @brief 设置当前估计的新值.
+   * @param new_value 设置的新值.
    */
   virtual void set_value(const Eigen::MatrixXd &new_value) {
     assert(_value.rows() == new_value.rows());
@@ -94,8 +91,8 @@ public:
   }
 
   /**
-   * @brief Overwrite value of first-estimate
-   * @param new_value New value that will overwrite state's fej
+   * @brief 设置当前FEJ的值.
+   * @param new_value 当前FEJ的设置值.
    */
   virtual void set_fej(const Eigen::MatrixXd &new_value) {
     assert(_fej.rows() == new_value.rows());
@@ -104,13 +101,13 @@ public:
   }
 
   /**
-   * @brief Create a clone of this variable
+   * @brief 对当前状态进行克隆.
    */
   virtual std::shared_ptr<Type> clone() = 0;
 
   /**
    * @brief Determine if pass variable is a sub-variable
-   *
+   *        判断心传递的状态值是不是状态的子变量.
    * If the passed variable is a sub-variable or the current variable this will return it.
    * Otherwise it will return a nullptr, meaning that it was unable to be found.
    *
@@ -119,16 +116,16 @@ public:
   virtual std::shared_ptr<Type> check_if_subvariable(const std::shared_ptr<Type> check) { return nullptr; }
 
 protected:
-  /// First-estimate
+  /// FEJ
   Eigen::MatrixXd _fej;
 
-  /// Current best estimate
+  /// 当前的最优估计.
   Eigen::MatrixXd _value;
 
-  /// Location of error state in covariance
+  /// 当前误差状态在协方差中的位置.
   int _id = -1;
 
-  /// Dimension of error state
+  /// 当前误差状态的维度.
   int _size = -1;
 };
 
