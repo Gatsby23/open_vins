@@ -36,23 +36,22 @@ using namespace ov_init;
 
 bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covariance, std::vector<std::shared_ptr<Type>> &order,
                                    std::shared_ptr<IMU> t_imu, bool wait_for_jerk) {
-
-  // Return if we don't have any measurements
+  // 如果没有测量数据则返回
   if (imu_data->size() < 2) {
     return false;
   }
 
-  // Newest and oldest imu timestamp
+  // 最新和最老的IMU时间戳.
   double newesttime = imu_data->at(imu_data->size() - 1).timestamp;
   double oldesttime = imu_data->at(0).timestamp;
 
-  // Return if we don't have enough for two windows
+  // 如果时间窗太短，则直接返回.
   if (newesttime - oldesttime < params.init_window_time) {
     PRINT_INFO(YELLOW "[init-s]: unable to select window of IMU readings, not enough readings\n" RESET);
     return false;
   }
 
-  // First lets collect a window of IMU readings from the newest measurement to the oldest
+  // 1. First lets collect a window of IMU readings from the newest measurement to the oldest
   // 第一步：收集出IMU数据窗口.
   std::vector<ImuData> window_1to0, window_2to1;
   for (const ImuData &data : *imu_data) {
@@ -64,13 +63,13 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
     }
   }
 
-  // Return if both of these failed
+  // 2. Return if both of these failed
   if (window_1to0.size() < 2 || window_2to1.size() < 2) {
     PRINT_INFO(YELLOW "[init-s]: unable to select window of IMU readings, not enough readings\n" RESET);
     return false;
   }
 
-  // Calculate the sample variance for the newest window from 1 to 0
+  // 3. Calculate the sample variance for the newest window from 1 to 0
   // 计算采样的方差.
   Eigen::Vector3d a_avg_1to0 = Eigen::Vector3d::Zero();
   for (const ImuData &data : window_1to0) {
@@ -83,7 +82,7 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
   }
   a_var_1to0 = std::sqrt(a_var_1to0 / ((int)window_1to0.size() - 1));
 
-  // Calculate the sample variance for the second newest window from 2 to 1
+  // 4. Calculate the sample variance for the second newest window from 2 to 1
   Eigen::Vector3d a_avg_2to1 = Eigen::Vector3d::Zero();
   Eigen::Vector3d w_avg_2to1 = Eigen::Vector3d::Zero();
   for (const ImuData &data : window_2to1) {
@@ -99,21 +98,21 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
   a_var_2to1 = std::sqrt(a_var_2to1 / ((int)window_2to1.size() - 1));
   PRINT_DEBUG(YELLOW "[init-s]: IMU excitation stats: %.3f,%.3f\n" RESET, a_var_2to1, a_var_1to0);
 
-  // If it is below the threshold and we want to wait till we detect a jerk
+  // 5. If it is below the threshold and we want to wait till we detect a jerk
   // 如果低于阈值，则一直等到有冲动再初始化.
   if (a_var_1to0 < params.init_imu_thresh && wait_for_jerk) {
     PRINT_INFO(YELLOW "[init-s]: no IMU excitation, below threshold %.3f < %.3f\n" RESET, a_var_1to0, params.init_imu_thresh);
     return false;
   }
 
-  // We should also check that the old state was below the threshold!
+  // 6. We should also check that the old state was below the threshold!
   // This is the case when we have started up moving, and thus we need to wait for a period of stationary motion
   if (a_var_2to1 > params.init_imu_thresh && wait_for_jerk) {
     PRINT_INFO(YELLOW "[init-s]: to much IMU excitation, above threshold %.3f > %.3f\n" RESET, a_var_2to1, params.init_imu_thresh);
     return false;
   }
 
-  // If it is above the threshold and we are not waiting for a jerk
+  // 7. If it is above the threshold and we are not waiting for a jerk
   // Then we are not stationary (i.e. moving) so we should wait till we are
   if ((a_var_1to0 > params.init_imu_thresh || a_var_2to1 > params.init_imu_thresh) && !wait_for_jerk) {
     PRINT_INFO(YELLOW "[init-s]: to much IMU excitation, above threshold %.3f,%.3f > %.3f\n" RESET, a_var_2to1, a_var_1to0,
@@ -121,19 +120,19 @@ bool StaticInitializer::initialize(double &timestamp, Eigen::MatrixXd &covarianc
     return false;
   }
 
-  // Get rotation with z axis aligned with -g (z_in_G=0,0,1)
+  // 8. Get rotation with z axis aligned with -g (z_in_G=0,0,1)
   Eigen::Vector3d z_axis = a_avg_2to1 / a_avg_2to1.norm();
   Eigen::Matrix3d Ro;
   InitializerHelper::gram_schmidt(z_axis, Ro);
   Eigen::Vector4d q_GtoI = rot_2_quat(Ro);
 
-  // Set our biases equal to our noise (subtract our gravity from accelerometer bias)
+  // 9. Set our biases equal to our noise (subtract our gravity from accelerometer bias)
   Eigen::Vector3d gravity_inG;
   gravity_inG << 0.0, 0.0, params.gravity_mag;
   Eigen::Vector3d bg = w_avg_2to1;
   Eigen::Vector3d ba = a_avg_2to1 - quat_2_Rot(q_GtoI) * gravity_inG;
 
-  // Set our state variables
+  // 10. Set our state variables
   timestamp = window_2to1.at(window_2to1.size() - 1).timestamp;
   Eigen::VectorXd imu_state = Eigen::VectorXd::Zero(16);
   imu_state.block(0, 0, 4, 1) = q_GtoI;

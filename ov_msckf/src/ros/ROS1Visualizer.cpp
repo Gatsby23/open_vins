@@ -450,38 +450,35 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   _app->feed_measurement_imu(message);
   visualize_odometry(message.timestamp);
 
-  // If the processing queue is currently active / running just return so we can keep getting measurements
-  // Otherwise create a second thread to do our update in an async manor
-  // The visualization of the state, images, and features will be synchronous with the update!
+  // 如果处理队列当前正在运行,则直接返回以便继续接收测量数据
+  // 否则创建第二个线程来异步执行更新
+  // 状态、图像和特征的可视化将与更新同步进行!
   if (thread_update_running) return;
+  // 设置线程运行标志为true,表示当前有线程正在处理图像队列
+  // 这样可以避免多个线程同时处理图像队列导致的数据竞争问题
+  // 只有当前线程处理完成后,才允许下一个线程开始处理
   thread_update_running = true;
-  // 这里应该是判断相机数据是否够系统后续执行？
   std::thread thread([&] {
-    // Lock on the queue (prevents new images from appending)
+    // 锁定队列(防止新图像追加)
     std::lock_guard<std::mutex> lck(camera_queue_mtx);
-    // 判断已经添加了张多少图像数据.
-    // Count how many unique image streams
+    // 统计有多少个不同的图像流(配置的相机数目)
     std::map<int, bool> unique_cam_ids;
     for (const auto &cam_msg : camera_queue) {
       unique_cam_ids[cam_msg.sensor_ids.at(0)] = true;
     }
-    // If we do not have enough unique cameras then we need to wait
-    // We should wait till we have one of each camera to ensure we propagate in the correct order
-    // 依据配置来判断后续动作，如果双目的话，只需要收到一组就可以继续进行，如果不是双目的话，则需要看配置的文件多少张图像来做图像。
+    // 这里在每次处理的时候，图像的buffer中应该包含了各个相机中收到的图像数据.
     auto params = _app->get_params();
     size_t num_unique_cameras = (params.state_options.num_cameras == 2) ? 1 : params.state_options.num_cameras;
-    // 这里需要看接收到的和配置是不是一样->如果是双目，则应该是2，如果是单目则应该是1.
     if (unique_cam_ids.size() == num_unique_cameras) {
-      // Loop through our queue and see if we are able to process any of our camera measurements
-      // We are able to process if we have at least one IMU measurement greater than the camera time
+      // 获得IMU时间戳在相机时间系统下的值（统一到一个时间坐标系下）.
       double timestamp_imu_inC = message.timestamp - _app->get_state()->_calib_dt_CAMtoIMU->value()(0);
+      // 循环遍历图像队列，仅处理在此IMU事件戳之前的图像函数.
       while (!camera_queue.empty() && camera_queue.at(0).timestamp < timestamp_imu_inC) {
         auto rT0_1 = boost::posix_time::microsec_clock::local_time();
         double update_dt = 100.0 * (timestamp_imu_inC - camera_queue.at(0).timestamp);
-        // 这里就输入到VIO系统了.
         _app->feed_measurement_camera(camera_queue.at(0));
-        // 可视化的情况了.
         visualize();
+        // 处理完后，把这个图像给推出.
         camera_queue.pop_front();
         auto rT0_2 = boost::posix_time::microsec_clock::local_time();
         double time_total = (rT0_2 - rT0_1).total_microseconds() * 1e-6;
@@ -491,9 +488,8 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
     thread_update_running = false;
   });
 
-  // If we are single threaded, then run single threaded
-  // Otherwise detach this thread so it runs in the background!
-  // 这里不知道会带来的性能开销怎么样.
+  // 如果是单线程模式,则以单线程方式运行
+  // 否则将该线程分离,让其在后台运行!
   if (!_app->get_params().use_multi_threading_subs) {
     thread.join();
   } else {

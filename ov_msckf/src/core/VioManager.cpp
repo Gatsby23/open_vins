@@ -181,11 +181,10 @@ VioManager::VioManager(VioManagerOptions &params_) : thread_init_running(false),
 
 void VioManager::feed_measurement_imu(const ov_core::ImuData &message) {
 
-  // The oldest time we need IMU with is the last clone
-  // We shouldn't really need the whole window, but if we go backwards in time we will
+  // 我们需要的最早的IMU时间是最后一个克隆时间
   double oldest_time = state->margtimestep();
   if (oldest_time > state->_timestamp) {
-    oldest_time = -1;
+    oldest_time = -1; // 针对时间倒退进行处理.
   }
   // 未初始化阶段，会往前走一个传感器帧，用来做同步.
   if (!is_initialized_vio) {

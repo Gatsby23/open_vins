@@ -181,9 +181,9 @@ public:
   std::shared_ptr<ov_type::JPLQuat> _calib_imu_ACCtoIMU;
 
 private:
-  // Define that the state helper is a friend class of this class
-  // This will allow it to access the below functions which should normally not be called
-  // This prevents a developer from thinking that the "insert clone" will actually correctly add it to the covariance
+  // 将StateHelper定义为当前类的友元类
+  // 这允许StateHelper访问下面那些通常不应该被调用的函数
+  // 这可以防止开发者误认为"insert clone"函数会正确地将克隆状态添加到协方差矩阵中
   friend class StateHelper;
 
   /// Covariance of all active variables

@@ -77,21 +77,21 @@ void VioManager::initialize_with_gt(Eigen::Matrix<double, 17, 1> imustate) {
 
 bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
 
-  // Directly return if the initialization thread is running
-  // Note that we lock on the queue since we could have finished an update
-  // And are using this queue to propagate the state forward. We should wait in this case
+    // 如果初始化线程正在运行，则直接返回
+    // 注意我们需要锁定队列，因为我们可能刚完成一次更新
+    // 并且正在使用这个队列来向前传播状态。在这种情况下我们应该等待
   if (thread_init_running) {
     std::lock_guard<std::mutex> lck(camera_queue_init_mtx);
     camera_queue_init.push_back(message.timestamp);
     return false;
   }
 
-  // If the thread was a success, then return success!
+  // 如果系统已经初始化，则直接返回成功！
   if (thread_init_success) {
     return true;
   }
 
-  // Run the initialization in a second thread so it can go as slow as it desires
+  // 在第二个线程中运行初始化，这样它就可以慢到它想要的速度，而不会阻塞主循环.
   thread_init_running = true;
   std::thread thread([&] {
     // Returns from our initializer
@@ -100,9 +100,7 @@ bool VioManager::try_to_initialize(const ov_core::CameraData &message) {
     std::vector<std::shared_ptr<ov_type::Type>> order;
     auto init_rT1 = boost::posix_time::microsec_clock::local_time();
 
-    // Try to initialize the system
-    // We will wait for a jerk if we do not have the zero velocity update enabled
-    // Otherwise we can initialize right away as the zero velocity will handle the stationary case
+
     // 这里能懂意思了->如果有零速修正，则直接基于零速下的初始化。如果没有的话，则等一个jerk来初始化IMU.
     bool wait_for_jerk = (updaterZUPT == nullptr);
     // 这里是初始化，初始化完成后的协方差等都往后传递.

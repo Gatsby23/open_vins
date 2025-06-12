@@ -36,62 +36,57 @@ class IMU;
 namespace ov_init {
 
 /**
- * @brief Initializer for a static visual-inertial system.
- *        用于VIO系统的静态初始化方法.
- * This implementation that assumes that the imu starts from standing still.
- * To initialize from standstill:
- * 1. Collect all inertial measurements
- * 2. See if within the last window there was a jump in acceleration
- * 3. If the jump is past our threshold we should init (i.e. we have started moving)
- * 4. Use the *previous* window, which should have been stationary to initialize orientation
- * 5. Return a roll and pitch aligned with gravity and biases.
+ * @brief 视觉惯性系统的静态初始化器，用于VIO系统的静态初始化方法.
+ * 该实现假设IMU从静止状态开始。
+ * 1. 收集所有惯性测量数据
+ * 2. 检查在最后一个时间窗口内是否存在加速度跳变
+ * 3. 如果跳变超过阈值则进行初始化(即系统开始运动)
+ * 4. 使用前一个时间窗口(此时系统应该处于静止状态)来初始化姿态
+ * 5. 返回与重力和偏置对齐的横滚角和俯仰角
  *
  */
 class StaticInitializer {
 
 public:
-  /**
-   * @brief Default constructor
-   * @param params_ Parameters loaded from either ROS or CMDLINE
-   * @param db Feature tracker database with all features in it
-   * @param imu_data_ Shared pointer to our IMU vector of historical information
-   */
+  /******************************************************
+   * @brief 默认构造函数
+   * @param params_ 从ROS或命令行加载的参数
+   * @param db 包含所有特征的特征追踪器数据库
+   * @param imu_data_ 指向我们IMU历史信息向量的共享指针
+   ******************************************************/
    // 有了explicit关键字，防止隐式类型转换.
   explicit StaticInitializer(InertialInitializerOptions &params_, std::shared_ptr<ov_core::FeatureDatabase> db,
                              std::shared_ptr<std::vector<ov_core::ImuData>> imu_data_)
       : params(params_), _db(db), imu_data(imu_data_) {}
 
   /**
-   * @brief Try to get the initialized system using just the imu
+   * @brief 尝试仅使用IMU数据初始化系统
    *
-   * This will check if we have had a large enough jump in our acceleration.
-   * If we have then we will use the period of time before this jump to initialize the state.
-   * This assumes that our imu is sitting still and is not moving (so this would fail if we are experiencing constant acceleration).
+   * 该函数会检查加速度是否发生了足够大的跳变。
+   * 如果发生跳变，我们将使用跳变前的时间段来初始化状态。
+   * 这假设我们的IMU处于静止状态且没有移动（因此如果我们经历恒定的加速度，这将失败）。
    *
-   * In the case that we do not wait for a jump (i.e. `wait_for_jerk` is false), then the system will try to initialize as soon as possible.
-   * This is only recommended if you have zero velocity update enabled to handle the stationary cases.
-   * To initialize in this case, we need to have the average angular variance be below the set threshold (i.e. we need to be stationary).
+   * 如果我们不等待跳变（即`wait_for_jerk`为false），则系统将尝试尽快初始化。
+   * 这仅在启用了零速度更新来处理静止情况时才建议使用。
+   * 在这种情况下进行初始化，我们需要平均角速度方差低于设定的阈值（即我们需要处于静止状态）。
    *
-   * @param[out] timestamp Timestamp we have initialized the state at
-   * @param[out] covariance Calculated covariance of the returned state
-   * @param[out] order Order of the covariance matrix
-   * @param[out] t_imu Our imu type element
-   * @param wait_for_jerk If true we will wait for a "jerk"
-   * @return True if we have successfully initialized our system
+   * @param[out] timestamp 我们初始化状态时的时间戳
+   * @param[out] covariance 返回状态的计算协方差
+   * @param[out] order 协方差矩阵的顺序
+   * @param[out] t_imu 我们的IMU类型元素
+   * @param wait_for_jerk 如果为true，我们将等待"跳变"
+   * @return 如果我们成功初始化了系统，则返回True
    */
   bool initialize(double &timestamp, Eigen::MatrixXd &covariance, std::vector<std::shared_ptr<ov_type::Type>> &order,
                   std::shared_ptr<ov_type::IMU> t_imu, bool wait_for_jerk = true);
 
 private:
-  /// Initialization parameters
   /// 初始化参数.
   InertialInitializerOptions params;
 
-  /// Feature tracker database with all features in it
   /// 追踪特征数据库.
   std::shared_ptr<ov_core::FeatureDatabase> _db;
 
-  /// Our history of IMU messages (time, angular, linear)
   /// 历史的IMU信息数据.
   std::shared_ptr<std::vector<ov_core::ImuData>> imu_data;
 };

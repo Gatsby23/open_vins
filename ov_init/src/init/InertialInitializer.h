@@ -39,27 +39,24 @@ class StaticInitializer;
 class DynamicInitializer;
 
 /**
- * @brief Initializer for visual-inertial system.
- *        VIO系统的初始化模块.
- * This will try to do both dynamic and state initialization of the state.
- * The user can request to wait for a jump in our IMU readings (i.e. device is picked up) or to initialize as soon as possible.
- * For state initialization, the user needs to specify the calibration beforehand, otherwise dynamic is always used.
- * 这里将尝试对系统进行动态初始化，来初始化我们的状态。一般来说，我们会先进行动态初始化。如果用户指定了IMU数据跳变（如把设备拿起等），否则就进行静态太初始化.
- * The logic is as follows:
- * 1. Try to perform dynamic initialization of state elements.
- * 2. If this fails and we have calibration then we can try to do static initialization
- * 3. If the unit is stationary and we are waiting for a jerk, just return, otherwise initialize the state!
- *  如果什么跳变都没有的话，则直接进行初始化.
- * The dynamic system is based on an implementation and extension of the work [Estimator initialization in vision-aided inertial navigation
- * with unknown camera-IMU calibration](https://ieeexplore.ieee.org/document/6386235) @cite Dong2012IROS which solves the initialization
- * problem by first creating a linear system for recovering the camera to IMU rotation, then for velocity, gravity, and feature positions,
- * and finally a full optimization to allow for covariance recovery.
- * 这里动态初始化主要是基于论文《Estimator initialization in vision-aided inertial navigation with unknown camera-IMU calibration》来实现，
- * Dong创建了第一个线性系统来恢复出相机和IMU之间的旋转，然后是速度、重力和特征点位置，最后是优化出整体对应的协方差矩阵.
- * Another paper which might be of interest to the reader is [An Analytical Solution to the IMU Initialization
- * Problem for Visual-Inertial Systems](https://ieeexplore.ieee.org/abstract/document/9462400) which has some detailed
- * experiments on scale recovery and the accelerometer bias.
- * 另一篇文章更关注恢复尺度和加速度计bias.
+ * @brief 视觉惯性系统的初始化器
+ *
+ * 这个初始化器会尝试对系统状态进行动态或静态初始化。
+ * 用户可以选择等待IMU读数出现跳变(比如设备被拿起)或者尽快进行初始化。
+ * 对于静态初始化,用户需要提前指定标定参数,否则将始终使用动态初始化。
+ *
+ * 初始化的逻辑如下:
+ * 1. 尝试对状态元素进行动态初始化
+ * 2. 如果动态初始化失败且我们有标定参数,则尝试进行静态初始化
+ * 3. 如果设备静止且我们在等待跳变,则返回,否则直接初始化状态!
+ *
+ * 动态初始化系统基于论文《Estimator initialization in vision-aided inertial navigation with unknown camera-IMU calibration》
+ * 的实现和扩展。该论文通过以下步骤解决初始化问题:
+ * 首先创建线性系统恢复相机到IMU的旋转,然后恢复速度、重力和特征点位置,
+ * 最后进行完整优化以获得协方差。
+ *
+ * 另一篇值得参考的论文是《An Analytical Solution to the IMU Initialization Problem for Visual-Inertial Systems》,
+ * 该论文对尺度恢复和加速度计偏置进行了详细的实验。
  */
 class InertialInitializer {
 
@@ -127,15 +124,14 @@ protected:
   std::shared_ptr<std::vector<ov_core::ImuData>> imu_data;
 
   /*****************************************************************************************************
-   * @brief 这里可以看到，也没必要一定抽象化类出来->可以通过包含的子类来看，然后看那个指针不是空指针，就代表用了某类方法.
+   * @brief 这里可以看到，也没必要一定抽象化类出来->
+   *      可以通过包含的子类来看，然后看那个指针不是空指针，就代表用了某类方法.
    *****************************************************************************************************/
 
-  /// Static initialization helper class
-  /// 静态初始化相关.
+  /// 静态初始化相关类.
   std::shared_ptr<StaticInitializer> init_static;
 
-  /// Dynamic initialization helper class
-  /// 动态初始化相关.
+  /// 动态初始化相关类.
   std::shared_ptr<DynamicInitializer> init_dynamic;
 };
 

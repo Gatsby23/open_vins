@@ -48,20 +48,21 @@ InertialInitializer::InertialInitializer(InertialInitializerOptions &params_, st
 
 void InertialInitializer::feed_imu(const ov_core::ImuData &message, double oldest_time) {
 
-  // Append it to our vector
+  // 将IMU添加到数据容器中.
   imu_data->emplace_back(message);
 
-  // Sort our imu data (handles any out of order measurements)
+  // 对IMU数据进行排序（避免测量值中出现乱序的问题）.     
   // std::sort(imu_data->begin(), imu_data->end(), [](const IMUDATA i, const IMUDATA j) {
   //    return i.timestamp < j.timestamp;
   //});
 
-  // Loop through and delete imu messages that are older than our requested time
+  // 删除旧的IMU数据（只保留在指定时间窗口内的数据）.
   // std::cout << "INIT: imu_data.size() " << imu_data->size() << std::endl;
   if (oldest_time != -1) {
     auto it0 = imu_data->begin();
     while (it0 != imu_data->end()) {
       if (it0->timestamp < oldest_time) {
+        // 删除旧的IMU数据.
         it0 = imu_data->erase(it0);
       } else {
         it0++;
@@ -74,10 +75,10 @@ void InertialInitializer::feed_imu(const ov_core::ImuData &message, double oldes
 bool InertialInitializer::initialize(double &timestamp, Eigen::MatrixXd &covariance, std::vector<std::shared_ptr<ov_type::Type>> &order,
                                      std::shared_ptr<ov_type::IMU> t_imu, bool wait_for_jerk) {
 
-  // Get the newest and oldest timestamps we will try to initialize between!
+  // 1. Get the newest and oldest timestamps we will try to initialize between!
   // 得到最近的一帧相机时间戳的时间.
   double newest_cam_time = -1;
-  // 拿到了特征点数据.
+  // 通过遍历特征点数据库，得到最新的一帧时间戳.
   for (auto const &feat : _db->get_internal_data()) {
     for (auto const &camtimepair : feat.second->timestamps) {
       for (auto const &time : camtimepair.second) {
@@ -86,13 +87,14 @@ bool InertialInitializer::initialize(double &timestamp, Eigen::MatrixXd &covaria
     }
   }
   // 最新的一帧时间戳，减去初始化需要的时间窗，再去掉0.10这个变量，看是多少（确保有足够的数据用于初始化）.
+  // 这里0.10是表示初始化需要的时间窗，因为初始化需要时间，所以需要去掉0.10s.
   double oldest_time = newest_cam_time - params.init_window_time - 0.10;
-  // 如果初始化的时间都不足0.10s，就直接表示初始化失败，直接退出.
+  // 如果时间不满足要求，就直接退出，表示初始化失败.
   if (newest_cam_time < 0 || oldest_time < 0) {
     return false;
   }
 
-  // Remove all measurements that are older then our initialization window
+  // 2. Remove all measurements that are older then our initialization window
   // Then we will try to use all features that are in the feature database!
   // 将之前提取的特征中，oldest_time之前的特征全部去掉->无论是相机数据，还是IMU数据.
   _db->cleanup_measurements(oldest_time);
@@ -101,8 +103,9 @@ bool InertialInitializer::initialize(double &timestamp, Eigen::MatrixXd &covaria
     it_imu = imu_data->erase(it_imu);
   }
 
-  // Compute the disparity of the system at the current timestep
+  // 3. Compute the disparity of the system at the current timestep
   // If disparity is zero or negative we will always use the static initializer
+  // 计算当前系统的视差，如果视差是0（或者是负数）->代表载体没有移动，则使用静态初始化.
   // 计算视差，如果视差是0，或者是负数，则使用静态初始化.
   // 注意到，这里虽然初始化是个窗口时间，但是总是分成两块0 -> 0.5*init_window_time一个时间，0.5*init_window_time -> 1.0 * init_window_time一个时间来计算视差.
   bool disparity_detected_moving_1to0 = false;
@@ -120,13 +123,14 @@ bool InertialInitializer::initialize(double &timestamp, Eigen::MatrixXd &covaria
 
     // Return if we can't compute the disparity
     int feat_thresh = 15;
-    // 至少要15个特征点以上才能用于后续初始化判断等情况.
+    // 如果少于15个特征点，则这个时候的视差不可靠，直接返回.
     if (num_features0 < feat_thresh || num_features1 < feat_thresh) {
       PRINT_WARNING(YELLOW "[init]: not enough feats to compute disp: %d,%d < %d\n" RESET, num_features0, num_features1, feat_thresh);
       return false;
     }
 
-    // Check if it passed our check!
+    // 4. Check if it passed our check!
+    // 如果视差大于阈值，则表示载体有移动，将它记录下来。
     PRINT_INFO(YELLOW "[init]: disparity is %.3f,%.3f (%.2f thresh)\n" RESET, avg_disp0, avg_disp1, params.init_max_disparity);
     disparity_detected_moving_1to0 = (avg_disp0 > params.init_max_disparity);
     disparity_detected_moving_2to1 = (avg_disp1 > params.init_max_disparity);
