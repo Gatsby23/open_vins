@@ -126,25 +126,24 @@ public:
   }
 
   /**
-   * @brief Given a gravity vector, compute the rotation from the inertial reference frame to this vector.
-   *
-   * The key assumption here is that our gravity is along the vertical direction in the inertial frame.
-   * We can take this vector (z_in_G=0,0,1) and find two arbitrary tangent directions to it.
+   * @brief 给定重力向量，计算从惯性参考系到该向量的旋转矩阵。
+   * 这里的关键假设是重力在惯性系中沿着垂直方向。
+   * 我们可以取这个向量(z_in_G=0,0,1)并找到两个与之相切的任意方向。
    * https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
-   *
-   * @param gravity_inI Gravity in our sensor frame
-   * @param R_GtoI Rotation from the arbitrary inertial reference frame to this gravity vector
+   * @param gravity_inI 传感器坐标系中的重力向量
+   * @param R_GtoI 从任意惯性参考系到该重力向量的旋转矩阵
    */
   static void gram_schmidt(const Eigen::Vector3d &gravity_inI, Eigen::Matrix3d &R_GtoI) {
 
-    // This will find an orthogonal vector to gravity which is our local z-axis
-    // We need to ensure we normalize after each one such that we obtain unit vectors
+      // 这将找到与重力正交的向量作为我们的局部z轴
+      // 我们需要确保在每一步之后都进行归一化，以获得单位向量
     Eigen::Vector3d z_axis = gravity_inI / gravity_inI.norm();
     Eigen::Vector3d x_axis, y_axis;
     Eigen::Vector3d e_1(1.0, 0.0, 0.0);
     Eigen::Vector3d e_2(0.0, 1.0, 0.0);
     double inner1 = e_1.dot(z_axis) / z_axis.norm();
     double inner2 = e_2.dot(z_axis) / z_axis.norm();
+    // 这里避免e1和e2与z轴重合，因为这会导致z轴与x轴和y轴重合，从而导致旋转矩阵不可逆。
     if (fabs(inner1) < fabs(inner2)) {
       x_axis = z_axis.cross(e_1);
       x_axis = x_axis / x_axis.norm();
@@ -164,7 +163,7 @@ public:
     // y_axis = ov_core::skew_x(z_axis) * x_axis;
     // y_axis = y_axis / y_axis.norm();
 
-    // Rotation from our global (where gravity is only along the z-axis) to the local one
+    // 最后，将x轴和y轴组合成旋转矩阵.
     R_GtoI.block(0, 0, 3, 1) = x_axis;
     R_GtoI.block(0, 1, 3, 1) = y_axis;
     R_GtoI.block(0, 2, 3, 1) = z_axis;
