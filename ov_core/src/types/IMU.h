@@ -28,11 +28,10 @@
 namespace ov_type {
 
 /**
- * @brief Derived Type class that implements an IMU state
- *
- * Contains a PoseJPL, Vec velocity, Vec gyro bias, and Vec accel bias.
- * This should be similar to that of the standard MSCKF state besides the ordering.
- * The pose is first, followed by velocity, etc.
+ * @brief Type的派生类IMU，用于表示当前IMU状态。
+ * 该状态中包含一个PoseJPL、速度Vec、陀螺仪零偏Vec和加速度计零偏Vec。
+ * 与标准的MSCKF状态相比，该状态仅在变量的排列顺序不同。
+ * 姿态在前，依次是速度、陀螺仪零偏和加速度计零偏。
  */
 class IMU : public Type {
 
@@ -55,11 +54,9 @@ public:
   ~IMU() {}
 
   /**
-   * @brief Sets id used to track location of variable in the filter covariance
-   *
-   * Note that we update the sub-variables also.
-   *
-   * @param new_id entry in filter covariance corresponding to this variable
+   * @brief 设置id，用于跟踪滤波中变量对应的协方差。
+   * 同时更新子变量。
+   * @param new_id 变量的位置。
    */
   void set_local_id(int new_id) override {
     _id = new_id;
@@ -107,6 +104,7 @@ public:
    */
   void set_fej(const Eigen::MatrixXd &new_value) override { set_fej_internal(new_value); }
 
+  // 克隆当前IMU状态，返回一个IMU状态的智能指针。
   std::shared_ptr<Type> clone() override {
     auto Clone = std::shared_ptr<Type>(new IMU());
     Clone->set_value(value());
@@ -114,6 +112,7 @@ public:
     return Clone;
   }
 
+  // 检查当前参数变量是否是当前状态中的子变量。
   std::shared_ptr<Type> check_if_subvariable(const std::shared_ptr<Type> check) override {
     if (check == _pose) {
       return _pose;
@@ -129,13 +128,13 @@ public:
     return nullptr;
   }
 
-  /// Rotation access
+  /// 访问状态中的旋转变量。
   Eigen::Matrix<double, 3, 3> Rot() const { return _pose->Rot(); }
 
-  /// FEJ Rotation access
+  /// 访问状态中旋转变量对应的FEJ.
   Eigen::Matrix<double, 3, 3> Rot_fej() const { return _pose->Rot_fej(); }
 
-  /// Rotation access quaternion
+  /// 访问状态中的旋转部分。
   Eigen::Matrix<double, 4, 1> quat() const { return _pose->quat(); }
 
   /// FEJ Rotation access quaternion

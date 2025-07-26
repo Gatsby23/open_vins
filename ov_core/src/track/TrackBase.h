@@ -170,52 +170,45 @@ public:
   void set_num_features(int _num_features) { num_features = _num_features; }
 
 protected:
-  /// Camera object which has all calibration in it
-  /// 包含所有校正信息的相机对象.
+  /// 已标定的相机对象.
   std::unordered_map<size_t, std::shared_ptr<CamBase>> camera_calib;
 
-  /// Database with all our current features
   /// 包含我们当前所有特征的数据库.
   std::shared_ptr<FeatureDatabase> database;
 
-  /// If we are a fisheye model or not
-  /// 是否是鱼眼相机.
+  /// 某个相机是否是鱼眼相机.
   std::map<size_t, bool> camera_fisheye;
 
-  /// Number of features we should try to track frame to frame
   /// 用于帧间匹配的特征数目.
   int num_features;
 
-  /// If we should use binocular tracking or stereo tracking for multi-camera
-  /// 是否使用双目.
+  /// 对于多相机来说，是否使用双目跟踪.
   bool use_stereo;
 
-  /// What histogram equalization method we should pre-process images with?
   /// 用来对图像进行预处理的方法.
   HistogramMethod histogram_method;
 
   /// Mutexs for our last set of image storage (img_last, pts_last, and ids_last)
-
+  /// 用于最后一个图像处理的互斥锁.
   std::vector<std::mutex> mtx_feeds;
 
   /// Mutex for editing the *_last variables
+  // 用于更新最后变量的互斥锁.
   std::mutex mtx_last_vars;
 
-  /// Last set of images (use map so all trackers render in the same order)
-  /// 最后的图像序列.
+  /// 最后一帧对应的图像序列.
   std::map<size_t, cv::Mat> img_last;
 
-  /// Last set of images (use map so all trackers render in the same order)
+  /// 最后一帧对应的mask序列.
   std::map<size_t, cv::Mat> img_mask_last;
-
-  /// Last set of tracked points
+  
+  /// 最后追踪到的视觉特征点. 
   std::unordered_map<size_t, std::vector<cv::KeyPoint>> pts_last;
 
-  /// Set of IDs of each current feature in the database
+  /// 特征在数据库中的id索引.
   std::unordered_map<size_t, std::vector<size_t>> ids_last;
 
-  /// Master ID for this tracker (atomic to allow for multi-threading)
-  /// 这里是用来做多线程的.
+  /// 用于多线程中的原子数.
   std::atomic<size_t> currid;
 
   // Timing variables (most children use these...)

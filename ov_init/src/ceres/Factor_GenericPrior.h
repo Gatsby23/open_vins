@@ -28,6 +28,7 @@ namespace ov_init {
 
 /**
  * @brief Factor for generic state priors for specific types.
+ * @brief 针对特定类型状态的先验因子。
  *
  * This is a general factor which handles state priors which have non-zero linear errors.
  * In general a unitary factor will have zero error when it is created, thus this extra term can be ignored.

@@ -27,16 +27,13 @@
 namespace ov_init {
 
 /**
- * @brief JPL quaternion CERES state parameterization
+ * @brief 针对JPL形式的四元数状态参数化
  */
 class State_JPLQuatLocal : public ceres::LocalParameterization {
 public:
   /**
-   * @brief State update function for a JPL quaternion representation.
-   *
-   * Implements update operation by left-multiplying the current
-   * quaternion with a quaternion built from a small axis-angle perturbation.
-   *
+   * @brief JPL更新函数。
+   * 通过将当前四元数与一个由小轴角扰动构建的四元数相乘来实现左乘操作，对当前状态进行更新。
    * @f[
    * \bar{q}=norm\Big(\begin{bmatrix} 0.5*\mathbf{\theta_{dx}} \\ 1 \end{bmatrix}\Big) \hat{\bar{q}}
    * @f]
@@ -44,15 +41,12 @@ public:
   bool Plus(const double *x, const double *delta, double *x_plus_delta) const override;
 
   /**
-   * @brief Computes the jacobian in respect to the local parameterization
-   *
-   * This essentially "tricks" ceres.
-   * Instead of doing what ceres wants:
+   * @brief 针对局部参数化形式的Jacobian求解计算.
+   * CERES默认的做法是先对全局参数求导，再对局部参数求导，从而得到雅可比矩阵。即
    * dr/dlocal= dr/dglobal * dglobal/dlocal
-   *
-   * We instead directly do:
+   * 但我们是直接对局部参数求导得到Jacobian矩阵，即:
    * dr/dlocal= [ dr/dlocal, 0] * [I; 0]= dr/dlocal.
-   * Therefore we here define dglobal/dlocal= [I; 0]
+   * 因此这里直接将全局对局部的导数定义为 dglobal/dlocal= [I; 0]
    */
   bool ComputeJacobian(const double *x, double *jacobian) const override;
 

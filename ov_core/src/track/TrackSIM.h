@@ -44,8 +44,8 @@ public:
       : TrackBase(cameras, 0, numaruco, false, HistogramMethod::NONE) {}
 
   /**
-   * @brief Process a new image
-   * @warning This function should not be used!! Use @ref feed_measurement_simulation() instead.
+   * @brief Process a new image 对新图像进行处理.
+   * @warning This function should not be used!! Use @ref feed_measurement_simulation() instead. ->不该被使用.
    * @param message Contains our timestamp, images, and camera ids
    */
   void feed_new_camera(const CameraData &message) override {
@@ -55,10 +55,10 @@ public:
   }
 
   /**
-   * @brief Feed function for a synchronized simulated cameras
-   * @param timestamp Time that this image was collected
-   * @param camids Camera ids that we have simulated measurements for
-   * @param feats Raw uv simulated measurements
+   * @brief 用于多相机（已同步）的仿真数据接口函数
+   * @param timestamp 图像收集的时间
+   * @param camids 模拟测量对应的相机id
+   * @param feats 原始uv模拟测量
    */
   void feed_measurement_simulation(double timestamp, const std::vector<int> &camids,
                                    const std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> &feats);

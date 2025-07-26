@@ -111,16 +111,15 @@ public:
 
   /**
    * @brief Will feed in a series of poses that we will then convert into control points.
+   *        输入一系列的位姿，并将其转换成控制点.
    *
-   * Our control points need to be uniformly spaced over the trajectory, thus given a trajectory we will
-   * uniformly sample based on the average spacing between the pose points specified.
-   *
-   * @param traj_points Trajectory poses that we will convert into control points (timestamp(s), q_GtoI, p_IinG)
+   *我们的控制点需要在轨迹上均匀分布，因此，对于给定的轨迹，我们将根据所提供位姿点之间的平均间距进行均匀采样。
+   * @param traj_points 用来生成控制点的轨迹poses. (timestamp(s), q_GtoI, p_IinG)
    */
   void feed_trajectory(std::vector<Eigen::VectorXd> traj_points);
 
   /**
-   * @brief Gets the orientation and position at a given timestamp
+   * @brief 获得给定时间戳的pose(旋转和平移).
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -129,7 +128,7 @@ public:
   bool get_pose(double timestamp, Eigen::Matrix3d &R_GtoI, Eigen::Vector3d &p_IinG);
 
   /**
-   * @brief Gets the angular and linear velocity at a given timestamp
+   * @brief 获得给定时间戳下的速度.
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -140,7 +139,7 @@ public:
   bool get_velocity(double timestamp, Eigen::Matrix3d &R_GtoI, Eigen::Vector3d &p_IinG, Eigen::Vector3d &w_IinI, Eigen::Vector3d &v_IinG);
 
   /**
-   * @brief Gets the angular and linear acceleration at a given timestamp
+   * @brief 获得给定时间戳下的角加速度和线性加速度.
    * @param timestamp Desired time to get the pose at
    * @param R_GtoI SO(3) orientation of the pose in the global frame
    * @param p_IinG Position of the pose in the global
@@ -157,24 +156,26 @@ public:
   double get_start_time() { return timestamp_start; }
 
 protected:
-  /// Uniform sampling time for our control points
+  /// 控制点的均匀采样时间.
   double dt;
 
-  /// Start time of the system
+  /// 系统的起始时间.
   double timestamp_start;
 
   /// Type defintion of our aligned eigen4d matrix: https://eigen.tuxfamily.org/dox/group__TopicStlContainers.html
+  /// 对齐的Eigen::Matrix4d容器定义.
   typedef std::map<double, Eigen::Matrix4d, std::less<double>, Eigen::aligned_allocator<std::pair<const double, Eigen::Matrix4d>>>
       AlignedEigenMat4d;
 
   /// Our control SE3 control poses (R_ItoG, p_IinG)
+  /// 我们的SE3控制点pose.
   AlignedEigenMat4d control_points;
 
   /**
-   * @brief Will find the two bounding poses for a given timestamp.
+   * @brief 找到给定时刻的前后两个poses.
    *
-   * This will loop through the passed map of poses and find two bounding poses.
-   * If there are no bounding poses then this will return false.
+   * 这里将循环访问当前的映射关系，发现并找到对应的Pose.
+     如果没有对应的pose，将会返回false.
    *
    * @param timestamp Desired timestamp we want to get two bounding poses of
    * @param poses Map of poses and timestamps
@@ -188,8 +189,7 @@ protected:
                                   Eigen::Matrix4d &pose1);
 
   /**
-   * @brief Will find two older poses and two newer poses for the current timestamp
-   *
+   * @brief 通过映射关系找到对应的老poses和新poses.
    * @param timestamp Desired timestamp we want to get four bounding poses of
    * @param poses Map of poses and timestamps
    * @param t0 Timestamp of the first pose

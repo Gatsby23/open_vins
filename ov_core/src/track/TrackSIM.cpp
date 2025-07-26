@@ -30,22 +30,24 @@ using namespace ov_core;
 void TrackSIM::feed_measurement_simulation(double timestamp, const std::vector<int> &camids,
                                            const std::vector<std::vector<std::pair<size_t, Eigen::VectorXf>>> &feats) {
 
-  // Assert our two vectors are equal
+  // 判断相机数量和当前的特征容器数量相同。
   assert(camids.size() == feats.size());
 
-  // Loop through each camera
+  // 遍历每个相机.
   for (size_t i = 0; i < camids.size(); i++) {
 
-    // Current camera id
+    // 当前相机id
     int cam_id = camids.at(i);
 
-    // Our good ids and points
+    // 当前相机中，特征点的id和坐标
     std::vector<cv::KeyPoint> good_left;
     std::vector<size_t> good_ids_left;
 
     // Update our feature database, with theses new observations
     // NOTE: we add the "currid" since we need to offset the simulator
     // NOTE: ids by the number of aruoc tags we have specified as tracking
+    // NOTE: 我们添加了"currid"，因为我们需要偏移模拟器中的id，以确保它们与指定的跟踪aruco标签数量一致。
+    // 用仿真出来的新观测对我们的特征数据库进行更新.
     for (const auto &feat : feats.at(i)) {
 
       // Get our id value
@@ -58,18 +60,20 @@ void TrackSIM::feed_measurement_simulation(double timestamp, const std::vector<i
       good_left.push_back(kpt);
       good_ids_left.push_back(id);
 
-      // Append to the database
+      // 对特征点解畸变.      
       cv::Point2f npt_l = camera_calib.at(cam_id)->undistort_cv(kpt.pt);
+      // 更新特征点到database数据库中.
       database->update_feature(id, timestamp, cam_id, kpt.pt.x, kpt.pt.y, npt_l.x, npt_l.y);
     }
 
-    // Get our width and height
+    // 获得当前相机图像的宽和高.
     int width = camera_calib.at(cam_id)->w();
     int height = camera_calib.at(cam_id)->h();
 
     // Move forward in time
     {
       std::lock_guard<std::mutex> lckv(mtx_last_vars);
+      // 创建图像和对应的mask.
       img_last[cam_id] = cv::Mat::zeros(cv::Size(width, height), CV_8UC1);
       img_mask_last[cam_id] = cv::Mat::zeros(cv::Size(width, height), CV_8UC1);
       pts_last[cam_id] = good_left;
